@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+.sites-runtime/
+*.log
+artifacts/
+capture/config.json
+capture/.auth/
+capture/node_modules/
+dist/screenshots/
+data/capture-manifest.json
+capture/.capture-lock/

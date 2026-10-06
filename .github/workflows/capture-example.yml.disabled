@@ -1,0 +1,34 @@
+# Adapt and rename to .yml in your WORK repository. Internal apps need a runner
+# on the approved network. This example does not transmit captured images to GitHub.
+name: Refresh app screenshots
+on:
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: Configured app ID (empty captures all)
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: dreamcatcher-thumbnail-capture
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: [self-hosted, dreamcatcher-capture]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix capture
+      - run: npx --prefix capture playwright install chromium
+      # Mount config.json and read-only auth state from your approved secret store.
+      # Restore previous data/capture-manifest.json + screenshot objects before capture.
+      - name: Capture updated app
+        run: node capture/worker.mjs /run/secrets/dreamcatcher-capture-config.json
+        env:
+          CAPTURE_APP_ID: ${{ inputs.app_id }}
+          DREAMCATCHER_CAPTURE_AUTH_FILE: /run/secrets/dreamcatcher-capture-auth.json
+      - run: npm run build
+      # Upload screenshots + manifest through your EXISTING app asset adapter.
+      # Do not upload unredacted screenshots as public build artifacts.

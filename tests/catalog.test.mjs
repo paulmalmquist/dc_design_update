@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {enrich,thumbnailSvg,validateApp} from '../dist/lib/catalog.mjs';
+const app={id:'build-overview',title:'Build overview',domain:'Manufacturing',task:'Track',subject:'assembly progress',audience:'manufacturing teams',tags:['Builds']};
+test('description is based on provided purpose and audience',()=>{assert.equal(enrich(app).summary,'Track assembly progress for manufacturing teams.');assert.equal(enrich(app).needsReview,true);});
+test('approved owner description is never overwritten',()=>{assert.equal(enrich({...app,description:'Approved text.',descriptionApproved:true}).summary,'Approved text.');assert.equal(enrich({...app,description:'Unapproved text.'}).summary,'Track assembly progress for manufacturing teams.');});
+test('missing metadata is marked for review without invented capabilities',()=>{const a=enrich({id:'new-app',title:'New app',domain:'Data'});assert.equal(a.descriptionSource,'fallback');assert.ok(a.needsReview);assert.doesNotMatch(a.summary,/certified|real.time|permission/i);});
+test('content revisions are stable and change with metadata',()=>{assert.equal(enrich(app).revision,enrich({...app}).revision);assert.notEqual(enrich(app).revision,enrich({...app,subject:'new scope'}).revision);});
+test('untrusted text cannot inject active SVG or markup',()=>{const svg=thumbnailSvg({...app,title:'<script>alert(1)</script>',tags:['<img onerror="alert(1)">']});assert.doesNotMatch(svg,/<script|<img/);assert.match(svg,/&lt;script&gt;/);});
+test('remote screenshots and traversal are rejected',()=>{for(const screenshotPath of ['https://private.local/x.png','screenshots/../x.png','screenshots/x.svg','//evil/x.jpg'])assert.throws(()=>validateApp({...app,screenshotPath}));assert.equal(enrich({...app,screenshotPath:'screenshots/build.jpg',screenshotApproved:true}).artworkSource,'approved-screenshot');});
+test('IDs cannot become filesystem paths; domains are explicit',()=>{assert.throws(()=>validateApp({...app,id:'../secret'}));assert.throws(()=>validateApp({...app,domain:'Unknown'}));});

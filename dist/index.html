@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dreamcatcher — Discover what’s possible</title>
+<meta name="description" content="A constellation of useful apps. A Dreamcatcher design prototype with cinematic discovery and automatic metadata artwork.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23100c1d'/%3E%3Cpath d='M16 4L27 16 16 28 5 16Z M5 16H27M16 4V28' fill='none' stroke='%23bba4ff' stroke-width='1.6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="app.mjs"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to app gallery</a>
+<div class="starfield" aria-hidden="true"></div>
+<header class="header">
+  <a class="brand" href="#gallery" aria-label="Dreamcatcher home"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3L35 20 20 37 5 20Z M5 20H35M20 3V37M9 9L31 31M31 9L9 31"/><circle cx="20" cy="20" r="8"/></svg><span>dreamcatcher<span class="beta">BETA</span></span></a>
+  <nav aria-label="Main navigation"><button data-nav="gallery" aria-current="page">Discover</button><button data-nav="my-list">My List <span id="list-count">0</span></button><button data-nav="studio">Thumbnail studio</button></nav>
+  <button class="icon-button about-button" id="about" aria-label="About this prototype">?</button>
+</header>
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy"><div class="eyebrow"><span class="spark">✧</span> A CONSTELLATION OF POSSIBILITIES</div><h1 id="hero-title">Dream it.<br><span>Share it.</span></h1><p>Find the tools that move your work forward.<br>Discover something worth opening.</p><div class="hero-actions"><button class="primary" id="explore">Explore the collection</button><button class="text-button" id="design-notes">The design direction <span>↗</span></button></div><div class="hero-caption"><span class="tiny-line"></span> SAME UNIVERSE. NEW POSSIBILITIES.</div></div>
+    <div class="constellation" aria-hidden="true"><svg viewBox="0 0 620 460"><defs><radialGradient id="nebula"><stop stop-color="#6a3baa" stop-opacity=".36"/><stop offset="1" stop-color="#281b46" stop-opacity="0"/></radialGradient><filter id="bloom"><feGaussianBlur stdDeviation="4"/></filter></defs><ellipse cx="335" cy="225" rx="280" ry="220" fill="url(#nebula)"/><g class="orbit-lines" fill="none" stroke="#af8ff6" stroke-width=".8" opacity=".22"><ellipse cx="327" cy="228" rx="264" ry="133" transform="rotate(-23 327 228)"/><ellipse cx="327" cy="228" rx="211" ry="179" transform="rotate(34 327 228)"/><path d="M104 289L155 121 263 71 348 136 467 101 540 235 447 321 308 376 216 297 104 289 284 206 348 136 447 321 284 206 155 121M540 235L284 206 308 376M263 71L216 297"/></g><g class="main-constellation" fill="none" stroke="#bba3fa" stroke-width="1.7"><path d="M185 116L239 87 278 147 324 166 371 146 412 88 465 122 438 194 395 251 324 280 254 254 207 200 185 116M207 200L278 147M438 194L371 146M309 173L339 173 324 192 309 173M324 192V337L282 367H365L324 337"/></g><g fill="#efe6ff"> <circle cx="185" cy="116" r="2.5"/><circle cx="239" cy="87" r="3"/><circle cx="278" cy="147" r="2.5"/><circle cx="324" cy="166" r="3"/><circle cx="371" cy="146" r="2.5"/><circle cx="412" cy="88" r="3"/><circle cx="465" cy="122" r="2.5"/><circle cx="438" cy="194" r="2"/><circle cx="395" cy="251" r="2"/><circle cx="324" cy="280" r="4"/><circle cx="254" cy="254" r="2.5"/><circle cx="207" cy="200" r="2.5"/><circle cx="324" cy="337" r="3"/><circle cx="282" cy="367" r="2"/><circle cx="365" cy="367" r="2"/></g><g fill="#d1b8ff" filter="url(#bloom)" opacity=".7"><circle cx="239" cy="87" r="5"/><circle cx="412" cy="88" r="5"/><circle cx="324" cy="280" r="6"/></g><g fill="#998cae" font-family="monospace" font-size="10" letter-spacing="2"><text x="464" y="91">DISCOVER</text><text x="113" y="339">CONNECT</text><text x="388" y="385">CREATE</text></g></svg><div class="constellation-tag"><span>01 / THE DREAMCATCHER</span><span>Ideas, connected.</span></div></div>
+  </section>
+  <section id="gallery-view" class="view">
+    <div class="collection-toolbar"><div class="section-title"><span class="eyebrow">YOUR NEXT POSSIBILITY</span><h2>The app collection<span class="sample-label">Sample catalog</span></h2></div><label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="search" type="search" placeholder="Find an app, a purpose, a team…" aria-label="Search apps"></label></div>
+    <div id="filters" class="filters" role="group" aria-label="Filter by domain"></div>
+    <div id="catalog-status" role="status"></div><div id="shelves"></div>
+  </section>
+  <section id="my-list-view" class="view" hidden><div class="page-intro"><span class="eyebrow">YOUR OWN CORNER OF THE UNIVERSE</span><h1>My List</h1><p>Useful apps, close at hand. Saved on this device.</p></div><div id="saved-apps" class="app-grid"></div></section>
+  <section id="studio-view" class="view" hidden><div class="page-intro"><span class="eyebrow">GIVE EVERY APP AN IDENTITY</span><h1>Every app. In the picture.</h1><p>An actual app screenshot, a clear purpose, and a useful fallback.</p></div><div class="studio-layout"><form id="studio-form" class="studio-form"><label>App name<input name="title" value="Launch readiness" maxlength="60" required></label><label>Domain<select name="domain" id="studio-domain"></select></label><div class="input-pair"><label>What does it do?<input name="task" value="Track" maxlength="120" placeholder="e.g. Compare" required></label><label>What is it about?<input name="subject" value="launch preparation milestones" maxlength="180" required></label></div><label>Who is it for?<input name="audience" value="mission teams" maxlength="100" required></label><label>Keywords <span>(comma separated)</span><input name="tags" value="Readiness, Milestones" maxlength="180"></label><p class="form-note">Live screenshots come from the capture worker in your work environment. This studio previews the fallback artwork and metadata description.</p><div class="studio-actions"><button class="primary" type="submit">Add to sample catalog</button><button class="secondary" type="button" id="download-art">Download SVG</button><button class="text-button" type="button" id="download-metadata">Export metadata</button></div><p id="studio-status" role="status"></p></form><div class="studio-preview"><div class="preview-label"><span>LIVE PREVIEW</span><span>16:9 · 800 × 450</span></div><img id="studio-art" alt="Generated app artwork"><h2 id="studio-name"></h2><p id="studio-summary"></p><div class="provenance"><span class="mini-star">✧</span><div><strong>Fallback, generated from your metadata</strong><p>The capture worker replaces this artwork with an actual screenshot after the app is ready. Owner-approved descriptions take priority.</p></div></div></div></div></section>
+</main>
+<footer><a class="footer-brand" href="#gallery">dreamcatcher</a><span>Ideas that move us forward.</span><span>Design prototype · All apps are examples</span></footer>
+<dialog id="detail-dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+<div class="toast" id="toast" role="status"></div>
+</body>
+</html>

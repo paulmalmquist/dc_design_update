@@ -1,0 +1,12 @@
+[
+ {"id":"aim","title":"AIM","domain":"Platform","task":"Track","subject":"AI initiatives, milestones, and delivery progress","audience":"program teams","owner":"Data & AI","tags":["Initiatives","Roadmap"],"featured":true},
+ {"id":"build-overview","title":"Build overview","domain":"Manufacturing","task":"Explore","subject":"build stages, assembly progress, and production context","audience":"manufacturing teams","owner":"Manufacturing analytics","tags":["Builds","Operations"],"featured":true},
+ {"id":"data-atlas","title":"Data atlas","domain":"Data","task":"Trace","subject":"relationships between reports, tables, and columns","audience":"data consumers","owner":"Data platform","tags":["Lineage","Discovery"],"featured":true},
+ {"id":"quality-lens","title":"Quality lens","domain":"Quality","task":"Review","subject":"nonconformance trends and quality follow-up","audience":"quality teams","owner":"Quality analytics","tags":["Quality","NCR"]},
+ {"id":"signal-room","title":"Signal room","domain":"Engineering","task":"Explore","subject":"telemetry channels and measurement patterns","audience":"engineering teams","owner":"Engineering analytics","tags":["Telemetry","Signals"]},
+ {"id":"cost-compass","title":"Cost compass","domain":"Finance","task":"Compare","subject":"cost categories and planning scenarios","audience":"finance partners","owner":"Finance analytics","tags":["Cost","Planning"]},
+ {"id":"mart-certification","title":"Mart certification","domain":"Quality","task":"Review","subject":"evidence and readiness for data certification","audience":"data stewards","owner":"Data governance","tags":["Evidence","Data trust"]},
+ {"id":"part-genealogy","title":"Part genealogy","domain":"Manufacturing","task":"Trace","subject":"part relationships and assembly history","audience":"manufacturing teams","owner":"Manufacturing analytics","tags":["Parts","Genealogy"]},
+ {"id":"metric-catalog","title":"Metric catalog","domain":"Data","task":"Discover","subject":"metric definitions and ownership","audience":"report builders","owner":"Data governance","tags":["Definitions","Metrics"]},
+ {"id":"app-insights","title":"App insights","domain":"Platform","task":"Explore","subject":"app adoption and discovery patterns","audience":"app owners","owner":"Dreamcatcher","tags":["Discovery","Usage"]}
+]

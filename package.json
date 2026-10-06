@@ -1,0 +1,16 @@
+{
+  "name": "dreamcatcher-cinema",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Constellation app gallery with automatic metadata artwork and descriptions",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
+    "generate": "node scripts/generate-catalog.mjs",
+    "test": "node --test",
+    "check": "node scripts/check.mjs",
+    "build": "npm run generate && npm run check"
+  }
+}

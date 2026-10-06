@@ -1,0 +1,16 @@
+{
+  "allowedOrigins": ["https://apps.example.internal"],
+  "allowLocalhost": false,
+  "maxAgeHours": 168,
+  "apps": [
+    {
+      "id": "aim",
+      "url": "https://apps.example.internal/aim/thumbnail-preview",
+      "readySelector": "[data-thumbnail-ready='true']",
+      "maskSelectors": ["[data-sensitive]", "[data-user-menu]"],
+      "rejectSelectors": ["[data-app-error]", "input[type=password]"],
+      "safePreview": true,
+      "authStateEnv": "DREAMCATCHER_CAPTURE_AUTH_FILE"
+    }
+  ]
+}
