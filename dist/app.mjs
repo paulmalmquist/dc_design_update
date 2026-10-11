@@ -564,6 +564,7 @@ async function intro() {
 // ── boot ─────────────────────────────────────────────────────────────────────
 ['#brand-mark', '#browse-mark', '#footer-mark'].forEach(s => { $(s).innerHTML = mini(); });
 async function boot() {
+  $('.skip')?.addEventListener('click', e => { e.preventDefault(); $('#main').focus(); });   // #main is not a route
   try {
     S.api = await connect(); S.me = (await call('GET', 'session')).user; await refresh();
   } catch (err) {
