@@ -1,0 +1,26 @@
+[
+ {
+  "id": "u-avery",
+  "name": "Avery",
+  "team": "Dreamcatcher platform",
+  "role": "admin"
+ },
+ {
+  "id": "u-jordan",
+  "name": "Jordan",
+  "team": "Manufacturing analytics",
+  "role": "creator"
+ },
+ {
+  "id": "u-riley",
+  "name": "Riley",
+  "team": "Data platform",
+  "role": "creator"
+ },
+ {
+  "id": "u-sam",
+  "name": "Sam",
+  "team": "Quality",
+  "role": "viewer"
+ }
+]

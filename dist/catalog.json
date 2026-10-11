@@ -1,28 +1,51 @@
 [
   {
-    "id": "aim",
-    "title": "AIM",
-    "domain": "Platform",
+    "id": "launch-readiness",
+    "title": "Launch readiness",
+    "domain": "Engineering",
     "task": "Track",
-    "subject": "AI initiatives, milestones, and delivery progress",
-    "audience": "program teams",
-    "owner": "Data & AI",
+    "subject": "every readiness gate between integration and launch",
+    "audience": "mission teams",
+    "owner": "Launch engineering",
     "description": "",
+    "logline": "Every gate between here and the pad.",
     "descriptionApproved": false,
     "tags": [
-      "Initiatives",
-      "Roadmap"
+      "Readiness",
+      "Gates"
     ],
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": true,
-    "summary": "Track AI initiatives, milestones, and delivery progress for program teams.",
+    "original": false,
+    "rank": 3,
+    "publishedAt": "2026-10-08",
+    "updatedAt": "",
+    "titleStyle": "wide",
+    "keyVisual": {
+      "type": "flow",
+      "stages": [
+        2,
+        3,
+        3,
+        2,
+        1
+      ],
+      "label": "Readiness gates, integration to launch"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Track every readiness gate between integration and launch for mission teams.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "935db4c5",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
-    "thumbnailPath": "thumbnails/aim.svg"
+    "revision": "b7f37787",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/launch-readiness-wide.svg",
+      "tall": "art/launch-readiness-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/launch-readiness.svg"
   },
   {
     "id": "build-overview",
@@ -33,6 +56,7 @@
     "audience": "manufacturing teams",
     "owner": "Manufacturing analytics",
     "description": "",
+    "logline": "Every build, every stage, one view.",
     "descriptionApproved": false,
     "tags": [
       "Builds",
@@ -41,12 +65,41 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": true,
+    "original": true,
+    "rank": 1,
+    "publishedAt": "2026-03-12",
+    "updatedAt": "2026-10-06",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "line",
+      "series": [
+        12,
+        14,
+        13,
+        17,
+        19,
+        18,
+        22,
+        24,
+        23,
+        27,
+        29,
+        31
+      ],
+      "label": "Builds completed per week"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Explore build stages, assembly progress, and production context for manufacturing teams.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "76407e96",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "aa5520ab",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/build-overview-wide.svg",
+      "tall": "art/build-overview-tall.svg"
+    },
     "thumbnailPath": "thumbnails/build-overview.svg"
   },
   {
@@ -58,6 +111,7 @@
     "audience": "data consumers",
     "owner": "Data platform",
     "description": "",
+    "logline": "Follow any number back to where it was born.",
     "descriptionApproved": false,
     "tags": [
       "Lineage",
@@ -66,12 +120,94 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": true,
+    "original": true,
+    "rank": 4,
+    "publishedAt": "2026-02-02",
+    "updatedAt": "2026-09-30",
+    "titleStyle": "wide",
+    "keyVisual": {
+      "type": "network",
+      "nodes": 14,
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          7,
+          9
+        ],
+        [
+          8,
+          9
+        ],
+        [
+          9,
+          10
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          10,
+          12
+        ],
+        [
+          11,
+          13
+        ]
+      ],
+      "label": "Lineage from sources to reports"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Trace relationships between reports, tables, and columns for data consumers.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "5e56d8b8",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "980d4ada",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/data-atlas-wide.svg",
+      "tall": "art/data-atlas-tall.svg"
+    },
     "thumbnailPath": "thumbnails/data-atlas.svg"
   },
   {
@@ -83,6 +219,7 @@
     "audience": "quality teams",
     "owner": "Quality analytics",
     "description": "",
+    "logline": "See where quality slips before it spreads.",
     "descriptionApproved": false,
     "tags": [
       "Quality",
@@ -90,14 +227,174 @@
     ],
     "screenshotPath": "",
     "screenshotApproved": false,
-    "featured": false,
+    "featured": true,
+    "original": false,
+    "rank": 2,
+    "publishedAt": "2026-04-20",
+    "updatedAt": "2026-10-03",
+    "titleStyle": "didone",
+    "keyVisual": {
+      "type": "matrix",
+      "rows": [
+        [
+          2,
+          3,
+          1,
+          4,
+          6,
+          3,
+          2,
+          1
+        ],
+        [
+          1,
+          2,
+          2,
+          3,
+          5,
+          7,
+          4,
+          2
+        ],
+        [
+          0,
+          1,
+          3,
+          2,
+          3,
+          4,
+          6,
+          5
+        ],
+        [
+          1,
+          0,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4
+        ]
+      ],
+      "label": "Nonconformances by area and week"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Review nonconformance trends and quality follow-up for quality teams.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "f4574192",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "9fbb80e4",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/quality-lens-wide.svg",
+      "tall": "art/quality-lens-tall.svg"
+    },
     "thumbnailPath": "thumbnails/quality-lens.svg"
+  },
+  {
+    "id": "aim",
+    "title": "AIM",
+    "domain": "Platform",
+    "task": "Track",
+    "subject": "AI initiatives, milestones, and delivery progress",
+    "audience": "program teams",
+    "owner": "Data & AI",
+    "description": "",
+    "logline": "Every AI initiative, from first spark to shipped.",
+    "descriptionApproved": false,
+    "tags": [
+      "Initiatives",
+      "Roadmap"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": true,
+    "original": true,
+    "rank": 5,
+    "publishedAt": "2026-01-15",
+    "updatedAt": "2026-10-09",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "flow",
+      "stages": [
+        3,
+        4,
+        3,
+        2,
+        1
+      ],
+      "label": "Initiatives by stage"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Track AI initiatives, milestones, and delivery progress for program teams.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "d52230cf",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/aim-wide.svg",
+      "tall": "art/aim-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/aim.svg"
+  },
+  {
+    "id": "decision-loops",
+    "title": "Decision loops",
+    "domain": "Platform",
+    "task": "Measure",
+    "subject": "how long key decisions take and where they wait",
+    "audience": "operations leaders",
+    "owner": "Data & AI",
+    "description": "",
+    "logline": "How long it takes to decide, and how to make it shorter.",
+    "descriptionApproved": false,
+    "tags": [
+      "Latency",
+      "Decisions"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": true,
+    "original": false,
+    "rank": 6,
+    "publishedAt": "2026-09-29",
+    "updatedAt": "",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "area",
+      "series": [
+        46,
+        44,
+        41,
+        42,
+        37,
+        33,
+        31,
+        28,
+        26,
+        22,
+        21,
+        18
+      ],
+      "label": "Median decision time, hours"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Measure how long key decisions take and where they wait for operations leaders.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "9ecb101b",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/decision-loops-wide.svg",
+      "tall": "art/decision-loops-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/decision-loops.svg"
   },
   {
     "id": "signal-room",
@@ -108,6 +405,7 @@
     "audience": "engineering teams",
     "owner": "Engineering analytics",
     "description": "",
+    "logline": "Thousands of channels. The few that matter.",
     "descriptionApproved": false,
     "tags": [
       "Telemetry",
@@ -116,38 +414,145 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": false,
+    "original": true,
+    "rank": 7,
+    "publishedAt": "2026-05-06",
+    "updatedAt": "2026-09-18",
+    "titleStyle": "wide",
+    "keyVisual": {
+      "type": "wave",
+      "lines": [
+        [
+          0,
+          0.4,
+          0.9,
+          1,
+          0.7,
+          0.2,
+          -0.3,
+          -0.7,
+          -0.8,
+          -0.5,
+          0,
+          0.5,
+          0.9,
+          0.8,
+          0.4,
+          -0.1,
+          -0.6,
+          -0.9,
+          -0.7,
+          -0.2,
+          0.3,
+          0.7
+        ],
+        [
+          0.2,
+          0.3,
+          0.5,
+          0.4,
+          0.2,
+          0,
+          -0.1,
+          -0.3,
+          -0.2,
+          0,
+          0.1,
+          0.3,
+          0.4,
+          0.3,
+          0.1,
+          -0.1,
+          -0.2,
+          -0.3,
+          -0.2,
+          0,
+          0.2,
+          0.3
+        ]
+      ],
+      "label": "Two telemetry channels, one test"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Explore telemetry channels and measurement patterns for engineering teams.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "be45ee79",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "3bb3d009",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/signal-room-wide.svg",
+      "tall": "art/signal-room-tall.svg"
+    },
     "thumbnailPath": "thumbnails/signal-room.svg"
   },
   {
-    "id": "cost-compass",
-    "title": "Cost compass",
-    "domain": "Finance",
-    "task": "Compare",
-    "subject": "cost categories and planning scenarios",
-    "audience": "finance partners",
-    "owner": "Finance analytics",
+    "id": "print-health",
+    "title": "Print health",
+    "domain": "Manufacturing",
+    "task": "Monitor",
+    "subject": "printer signals and anomalies during a build",
+    "audience": "additive manufacturing teams",
+    "owner": "Additive data",
     "description": "",
+    "logline": "Listen to the printer while it builds.",
     "descriptionApproved": false,
     "tags": [
-      "Cost",
-      "Planning"
+      "Additive",
+      "Anomalies"
     ],
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": false,
-    "summary": "Compare cost categories and planning scenarios for finance partners.",
+    "original": true,
+    "rank": 9,
+    "publishedAt": "2026-09-24",
+    "updatedAt": "",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "wave",
+      "lines": [
+        [
+          0.5,
+          0.55,
+          0.5,
+          0.6,
+          0.52,
+          0.58,
+          0.5,
+          0.95,
+          0.55,
+          0.5,
+          0.57,
+          0.52,
+          0.6,
+          0.54,
+          0.5,
+          0.56,
+          0.53,
+          0.88,
+          0.55,
+          0.5,
+          0.54,
+          0.52
+        ]
+      ],
+      "label": "Melt-pool signal with two flagged spikes"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Monitor printer signals and anomalies during a build for additive manufacturing teams.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "aa1aa78c",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
-    "thumbnailPath": "thumbnails/cost-compass.svg"
+    "revision": "d77ea409",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/print-health-wide.svg",
+      "tall": "art/print-health-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/print-health.svg"
   },
   {
     "id": "mart-certification",
@@ -158,6 +563,7 @@
     "audience": "data stewards",
     "owner": "Data governance",
     "description": "",
+    "logline": "Decision-grade data, gate by gate.",
     "descriptionApproved": false,
     "tags": [
       "Evidence",
@@ -166,13 +572,241 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": false,
+    "original": true,
+    "rank": 8,
+    "publishedAt": "2026-06-01",
+    "updatedAt": "2026-10-01",
+    "titleStyle": "didone",
+    "keyVisual": {
+      "type": "funnel",
+      "series": [
+        120,
+        84,
+        61,
+        40,
+        27
+      ],
+      "label": "Assets passing each certification gate"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Review evidence and readiness for data certification for data stewards.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "f5b05c36",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "1421a054",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/mart-certification-wide.svg",
+      "tall": "art/mart-certification-tall.svg"
+    },
     "thumbnailPath": "thumbnails/mart-certification.svg"
+  },
+  {
+    "id": "supplier-pulse",
+    "title": "Supplier pulse",
+    "domain": "Manufacturing",
+    "task": "Compare",
+    "subject": "supplier lead times and on-time delivery",
+    "audience": "supply chain teams",
+    "owner": "Supply chain analytics",
+    "description": "",
+    "logline": "Know which suppliers keep their promises.",
+    "descriptionApproved": false,
+    "tags": [
+      "Suppliers",
+      "Lead time"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": false,
+    "original": false,
+    "rank": 10,
+    "publishedAt": "2026-10-02",
+    "updatedAt": "",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "scatter",
+      "points": [
+        [
+          12,
+          96,
+          3
+        ],
+        [
+          18,
+          91,
+          5
+        ],
+        [
+          25,
+          88,
+          2
+        ],
+        [
+          31,
+          84,
+          4
+        ],
+        [
+          22,
+          79,
+          6
+        ],
+        [
+          40,
+          74,
+          3
+        ],
+        [
+          44,
+          70,
+          5
+        ],
+        [
+          52,
+          61,
+          2
+        ],
+        [
+          36,
+          82,
+          3
+        ],
+        [
+          58,
+          55,
+          4
+        ],
+        [
+          27,
+          93,
+          2
+        ],
+        [
+          48,
+          66,
+          6
+        ]
+      ],
+      "label": "Lead time against on-time delivery"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Compare supplier lead times and on-time delivery for supply chain teams.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "18835798",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/supplier-pulse-wide.svg",
+      "tall": "art/supplier-pulse-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/supplier-pulse.svg"
+  },
+  {
+    "id": "cost-compass",
+    "title": "Cost compass",
+    "domain": "Finance",
+    "task": "Compare",
+    "subject": "cost categories and planning scenarios",
+    "audience": "finance partners",
+    "owner": "Finance analytics",
+    "description": "",
+    "logline": "Where the money goes, and where it could.",
+    "descriptionApproved": false,
+    "tags": [
+      "Cost",
+      "Planning"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-03-30",
+    "updatedAt": "2026-09-22",
+    "titleStyle": "didone",
+    "keyVisual": {
+      "type": "bar",
+      "series": [
+        42,
+        38,
+        51,
+        47,
+        55,
+        61,
+        58
+      ],
+      "label": "Cost by category"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Compare cost categories and planning scenarios for finance partners.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "c7ab45e7",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/cost-compass-wide.svg",
+      "tall": "art/cost-compass-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/cost-compass.svg"
+  },
+  {
+    "id": "close-tracker",
+    "title": "Close tracker",
+    "domain": "Finance",
+    "task": "Track",
+    "subject": "month-end close tasks and days to close",
+    "audience": "controllers",
+    "owner": "Finance systems",
+    "description": "",
+    "logline": "The month-end close, day by day.",
+    "descriptionApproved": false,
+    "tags": [
+      "Close",
+      "Month end"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-07-14",
+    "updatedAt": "",
+    "titleStyle": "didone",
+    "keyVisual": {
+      "type": "line",
+      "series": [
+        11,
+        10,
+        10,
+        9,
+        9,
+        8,
+        8,
+        7,
+        7,
+        6
+      ],
+      "label": "Days to close, by month"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Track month-end close tasks and days to close for controllers.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "0481313e",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/close-tracker-wide.svg",
+      "tall": "art/close-tracker-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/close-tracker.svg"
   },
   {
     "id": "part-genealogy",
@@ -183,6 +817,7 @@
     "audience": "manufacturing teams",
     "owner": "Manufacturing analytics",
     "description": "",
+    "logline": "Every part has a family tree.",
     "descriptionApproved": false,
     "tags": [
       "Parts",
@@ -191,13 +826,216 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-02-24",
+    "updatedAt": "",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "network",
+      "nodes": 12,
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          3,
+          8
+        ],
+        [
+          6,
+          9
+        ],
+        [
+          7,
+          10
+        ],
+        [
+          8,
+          11
+        ]
+      ],
+      "label": "Assembly tree for one build"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Trace part relationships and assembly history for manufacturing teams.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "d1c64a23",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "3428fc54",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/part-genealogy-wide.svg",
+      "tall": "art/part-genealogy-tall.svg"
+    },
     "thumbnailPath": "thumbnails/part-genealogy.svg"
+  },
+  {
+    "id": "test-stand-board",
+    "title": "Test stand board",
+    "domain": "Engineering",
+    "task": "Review",
+    "subject": "test runs, outcomes, and stand availability",
+    "audience": "test engineers",
+    "owner": "Test data",
+    "description": "",
+    "logline": "Every stand, every run, at a glance.",
+    "descriptionApproved": false,
+    "tags": [
+      "Testing",
+      "Stands"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-08-19",
+    "updatedAt": "",
+    "titleStyle": "wide",
+    "keyVisual": {
+      "type": "bar",
+      "series": [
+        6,
+        9,
+        4,
+        11,
+        7,
+        8
+      ],
+      "label": "Test runs per stand this month"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Review test runs, outcomes, and stand availability for test engineers.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "391f8560",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/test-stand-board-wide.svg",
+      "tall": "art/test-stand-board-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/test-stand-board.svg"
+  },
+  {
+    "id": "ncr-triage",
+    "title": "NCR triage",
+    "domain": "Quality",
+    "task": "Prioritize",
+    "subject": "open nonconformances by severity and age",
+    "audience": "quality engineers",
+    "owner": "Quality analytics",
+    "description": "",
+    "logline": "Sort what needs you now from what can wait.",
+    "descriptionApproved": false,
+    "tags": [
+      "NCR",
+      "Triage"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-08-03",
+    "updatedAt": "",
+    "titleStyle": "didone",
+    "keyVisual": {
+      "type": "radial",
+      "rings": [
+        4,
+        9,
+        13
+      ],
+      "label": "Open NCRs by severity ring"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Prioritize open nonconformances by severity and age for quality engineers.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "009d0543",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/ncr-triage-wide.svg",
+      "tall": "art/ncr-triage-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/ncr-triage.svg"
+  },
+  {
+    "id": "freshness-radar",
+    "title": "Freshness radar",
+    "domain": "Data",
+    "task": "Check",
+    "subject": "how fresh each data pipeline is",
+    "audience": "data consumers",
+    "owner": "Data platform",
+    "description": "",
+    "logline": "Know how fresh it is before you trust it.",
+    "descriptionApproved": false,
+    "tags": [
+      "Freshness",
+      "Pipelines"
+    ],
+    "screenshotPath": "",
+    "screenshotApproved": false,
+    "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-07-01",
+    "updatedAt": "",
+    "titleStyle": "wide",
+    "keyVisual": {
+      "type": "radial",
+      "rings": [
+        6,
+        11,
+        15
+      ],
+      "label": "Pipelines by freshness ring"
+    },
+    "keyVisualSource": "metadata",
+    "summary": "Check how fresh each data pipeline is for data consumers.",
+    "descriptionSource": "metadata",
+    "needsReview": true,
+    "revision": "cd4644ed",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/freshness-radar-wide.svg",
+      "tall": "art/freshness-radar-tall.svg"
+    },
+    "thumbnailPath": "thumbnails/freshness-radar.svg"
   },
   {
     "id": "metric-catalog",
@@ -208,6 +1046,7 @@
     "audience": "report builders",
     "owner": "Data governance",
     "description": "",
+    "logline": "One definition for every number.",
     "descriptionApproved": false,
     "tags": [
       "Definitions",
@@ -216,12 +1055,37 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-01-28",
+    "updatedAt": "",
+    "titleStyle": "wide",
+    "keyVisual": {
+      "type": "bar",
+      "series": [
+        14,
+        22,
+        9,
+        17,
+        26,
+        12,
+        19,
+        8
+      ],
+      "label": "Certified metrics by domain"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Discover metric definitions and ownership for report builders.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "1ff71a34",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "97ef4071",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/metric-catalog-wide.svg",
+      "tall": "art/metric-catalog-tall.svg"
+    },
     "thumbnailPath": "thumbnails/metric-catalog.svg"
   },
   {
@@ -233,6 +1097,7 @@
     "audience": "app owners",
     "owner": "Dreamcatcher",
     "description": "",
+    "logline": "Which apps people find, and which ones they keep.",
     "descriptionApproved": false,
     "tags": [
       "Discovery",
@@ -241,12 +1106,39 @@
     "screenshotPath": "",
     "screenshotApproved": false,
     "featured": false,
+    "original": false,
+    "rank": null,
+    "publishedAt": "2026-05-20",
+    "updatedAt": "",
+    "titleStyle": "condensed",
+    "keyVisual": {
+      "type": "area",
+      "series": [
+        120,
+        135,
+        128,
+        160,
+        171,
+        166,
+        190,
+        204,
+        198,
+        231
+      ],
+      "label": "Weekly app opens"
+    },
+    "keyVisualSource": "metadata",
     "summary": "Explore app adoption and discovery patterns for app owners.",
     "descriptionSource": "metadata",
     "needsReview": true,
-    "revision": "b8bd7c80",
-    "generatorVersion": "1.0.0",
-    "artworkSource": "generated-diagram",
+    "revision": "500cc8f5",
+    "generatorVersion": "2.0.0",
+    "artworkSource": "constellation",
+    "screenshotSource": "none",
+    "art": {
+      "wide": "art/app-insights-wide.svg",
+      "tall": "art/app-insights-tall.svg"
+    },
     "thumbnailPath": "thumbnails/app-insights.svg"
   }
 ]

@@ -12,3 +12,5 @@ capture/node_modules/
 dist/screenshots/
 data/capture-manifest.json
 capture/.capture-lock/
+data/db.json
+data/db.json.tmp

@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL,fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {validateConfig,assertAllowedUrl} from './policy.mjs';
+import {validateKeyVisual} from '../dist/lib/constellation.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const digest=b=>createHash('sha256').update(b).digest('hex').slice(0,12);
 async function atomicJson(file,value){const temp=file+'.tmp';await writeFile(temp,JSON.stringify(value,null,2)+'\n');await rename(temp,file);}
@@ -24,11 +25,15 @@ export async function captureOne(browser, config, app, outputDir, env=process.en
     for(const selector of ['input[type=password]',...(app.rejectSelectors||[])])if(await page.locator(selector).isVisible())throw new Error('App is showing a login or error state.');
     let assetTimer;
     try {await Promise.race([page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(img=>img.decode().catch(()=>{})));}),new Promise((_,reject)=>{assetTimer=setTimeout(()=>reject(new Error('App assets did not become ready.')),10000);})]);}finally{clearTimeout(assetTimer);}
+    // The app may publish its key graph for the gallery: <script type="application/json" data-dreamcatcher-key-visual>{...}</script>.
+    // It is untrusted page content, so only a small, numeric-only shape is accepted; anything else is ignored.
+    let keyVisual=null;
+    try{const raw=await page.locator('[data-dreamcatcher-key-visual]').first().textContent({timeout:1000});if(raw&&raw.length<=20000)keyVisual=validateKeyVisual(JSON.parse(raw));}catch{keyVisual=null;}
     const masks=(app.maskSelectors||[]).map(s=>page.locator(s));
     const bytes=await page.screenshot({type:'jpeg',quality:84,fullPage:false,animations:'disabled',caret:'hide',mask:masks,maskColor:'#21192f',timeout:20000});
     const revision=digest(bytes);const name=`${app.id}-${revision}.jpg`;
     await mkdir(outputDir,{recursive:true});const temp=path.join(outputDir,name+'.tmp');await writeFile(temp,bytes);await rename(temp,path.join(outputDir,name));
-    return {path:`screenshots/${name}`,capturedAt:new Date().toISOString(),revision,approved:true,width:1440,height:810,source:'playwright',appId:app.id};
+    return {path:`screenshots/${name}`,capturedAt:new Date().toISOString(),revision,approved:true,width:1440,height:810,source:'playwright',appId:app.id,...(keyVisual?{keyVisual}:{})};
   } finally {await context.close();}
 }
 export async function runCapture({configPath=path.join(root,'capture/config.json'),onlyId,chromium,env=process.env}={}){

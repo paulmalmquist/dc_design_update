@@ -1,6 +1,25 @@
-# Automatic screenshots of actual apps
+# Automatic screenshots and key graphs from actual apps
 
-The gallery's primary image must be a real browser screenshot of the app. A generative image model must never simulate an app screenshot. Fallback artwork remains distinct and labeled.
+The capture worker visits each app's real UI and brings back two things:
+
+1. **A screenshot.** Shown on the app's title page under Screens. It is always a real browser capture, never a generated image.
+2. **The app's key graph**, if the page publishes one. This is what tiles and the hero are drawn from (see [DESIGN_BEHAVIOR.md](DESIGN_BEHAVIOR.md)). When an app's main chart changes, its constellation changes on the next capture.
+
+Tiles are no longer screenshots. A constellation reads well at tile size, every app has one from the moment it's created, and it can't leak data, because only the chart's numbers are published, never the page around them.
+
+## Publish the key graph from the app
+
+Add one element to the app's thumbnail/preview route, next to the ready marker. It holds the main chart's numbers as JSON:
+
+```html
+<script type="application/json" data-dreamcatcher-key-visual>
+  {"type": "line", "series": [12, 14, 13, 17, 19, 24, 22, 28], "label": "Builds completed per week"}
+</script>
+```
+
+Types and limits are listed in [CRUD_CONTRACT.md](CRUD_CONTRACT.md#records): `line`, `area`, `bar`, `funnel`, `wave`, `scatter`, `network`, `flow`, `radial`, `matrix`. The worker reads at most 20,000 characters, parses JSON and runs `validateKeyVisual`. Anything else (text in a numeric field, too many points, an unknown type, broken JSON) is dropped silently, and the capture still succeeds with its screenshot. The app keeps the graph its owner entered, or its generated pattern.
+
+Publish **shapes, not secrets**. Use the same safe preview data as the screenshot. Scaling or rounding the values is fine, because the constellation normalises them. A graph is visible to everyone who can see the catalog.
 
 ## Install the capture worker
 
@@ -41,13 +60,15 @@ Do not allow end users to provide arbitrary URLs to a screenshot service. This C
 
 The worker uses a 1440 × 810 dark-mode, reduced-motion browser viewport and JPEG quality 84. It waits for the app marker, fonts, and image decodes; refuses error responses, password forms and app-specific error selectors; masks configured sensitive regions; freezes animations and the caret; then atomically writes a content-hashed JPEG and a capture manifest.
 
-A successful record contains app ID, image path, timestamp, revision, dimensions, capture source and approval flag. Internal URLs and credentials are not copied into the published catalog. The build selects:
+A successful record contains app ID, image path, timestamp, revision, dimensions, capture source, approval flag and, when the page published one, the validated `keyVisual`. Internal URLs and credentials are not copied into the published catalog. For the title page's Screens section, the build and the dev server select:
 
 1. A successful approved captured screenshot no older than `maxAgeHours` (default 168 hours).
 2. An owner-approved local PNG/JPEG/WebP from app metadata.
-3. Generated domain artwork.
+3. A plain "No screenshot yet" note, plus a **Request screenshot** action for the owner or an admin (`POST api/apps/:id/capture`, which your job runner can poll).
 
-If a later attempt fails, it records failure and retains the previous screenshot while it is fresh. A nonzero worker exit reports partial or total failure; operators can choose to retain the current deployment. It never overwrites an approved image with a failed capture. Broken image loading in the gallery also falls back to generated artwork.
+A key graph from a fresh capture replaces the owner-entered graph for tiles and the hero, and is labelled as coming from the app.
+
+If a later attempt fails, it records failure and retains the previous screenshot while it is fresh. A nonzero worker exit reports partial or total failure; operators can choose to retain the current deployment. It never overwrites an approved image with a failed capture.
 
 The manifest and screenshot images are ignored by Git. Persist and restore them using your private asset store between CI runs; otherwise each clean run has no previous image to retain. An exclusive lock prevents concurrent writers in one checkout; cross-runner locking belongs to the existing job platform. A stale lock after process termination must be investigated before removal. Production adapters should upload objects first and publish the catalog pointer atomically last.
 
@@ -55,8 +76,9 @@ For per-app permissions, protect image delivery with the same audience restricti
 
 ## Work-environment acceptance
 
+- Publish a key graph from one real app's preview route, capture it, and confirm the tile and hero constellation match the app's chart. Change the chart's data and confirm the art changes on the next capture.
 - Capture two actual apps from approved preview URLs. Confirm images show the real app UI and load in the catalog.
-- Deploy a UI change, trigger capture, and confirm the image revision and thumbnail change without manual editing.
+- Deploy a UI change, trigger capture, and confirm the image revision and the Screens image change without manual editing.
 - Confirm owner-approved descriptions stay intact; new metadata-generated descriptions are flagged for review.
 - Verify login, HTTP 500, app error marker, missing readiness marker, timeout and missing credentials each produce failure without replacing a fresh good screenshot.
 - Test an unapproved redirect/resource origin and check it is blocked.
@@ -66,4 +88,4 @@ For per-app permissions, protect image delivery with the same audience restricti
 
 ## Verification in this package
 
-The worker's lifecycle and policy have passing mock-browser tests. No internal app screenshots have been captured in this environment. A real browser capture run requires your internal network and app configuration. Do not treat unit tests as that integration gate.
+The worker's lifecycle and policy, including reading and rejecting published key graphs, have passing mock-browser tests. No internal app screenshots have been captured in this environment. A real browser capture run requires your internal network and app configuration. Do not treat unit tests as that integration gate.
