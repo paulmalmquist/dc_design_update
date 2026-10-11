@@ -1,80 +1,72 @@
-# Dreamcatcher · Cinematic discovery
+# Dreamcatcher
 
-A repository-ready design prototype and implementation reference for upgrading the existing Dreamcatcher app gallery. Preserves the starfield, purple palette, and line-art Dreamcatcher constellation while introducing streaming-style app browsing.
+An app catalog that browses like a streaming service. Dreamcatcher has a rotating billboard, hover-to-preview, edge-to-edge rows, a Top 10, full title pages and My Stuff, applied to apps instead of shows. Every app's art is a constellation drawn from that app's main graph. When an app is created or its graph changes, its tile and hero art change with it.
+
+It also includes **Your apps**, a personal admin for creating and publishing apps with a live preview, and **Site admin**, which covers every app, home curation, roles and the activity log. Both run on one CRUD contract.
 
 ## Start
 
-Node 22+ is required. The gallery itself has **zero runtime or npm dependencies**.
+Node 22 or newer. No runtime dependencies.
 
 ```sh
-npm run build
-npm start
+npm run build   # validate data, write catalog, art and brand files, run static checks
+npm start       # http://127.0.0.1:4173 with the dev API and a JSON-file database
+npm test        # 34 tests: catalog, constellations, CRUD permissions, capture policy
 ```
 
-Open `http://127.0.0.1:4173`. Serve `dist/` on any static host. Do not open `index.html` using `file://`, because the catalog is loaded with `fetch`.
+The dev server signs you in as the sample admin. Switch users (admin, two creators, a viewer) from the profile menu. **Restore sample data** resets `data/db.json`.
 
-```sh
-npm test       # metadata, capture policy and mocked capture lifecycle tests
-npm run check # JS syntax, local asset paths and HTML IDs
-```
+`dist/` also works on any static host. Without an API it keeps data in the viewer's browser (`localStorage`), which is handy for design review. Production uses the real database (see below).
 
-## Included
+## What's in it
 
-- Responsive starfield gallery, preserved constellation motif, cinematic hero.
-- Horizontal app shelves, search and domain filters, keyboard focus treatment, touch support.
-- Hover lift/outline/description reveal, native detail dialog, and device-local My List.
-- Thumbnail studio with instant fallback art, structured descriptions, SVG and JSON export.
-- Automatic screenshot worker: visits actual apps, waits for an explicit ready marker, masks configured content, rejects login/error states, and outputs versioned JPEGs.
-- Build-time screenshot selection and automatic metadata descriptions.
-- 10 explicitly fictional/sample app records, six domain artwork treatments.
-- Handoff prompt, visual behavior guide, capture integration guide and CI validation.
+- **Home:** the hero rotates through curated apps every 8 s with pips and pause. Hovering a tile for 600 ms previews that app up top. Rows: Continue exploring, Top 10 with outlined numerals, New, Originals (portrait), Browse by domain, Because you opened, My List, and domain collections.
+- **Title pages:** stars fly from the tile into the hero. Each page has the title in its domain's display face, Open app, My List, Copy link and Edit, plus section tabs: Overview, The graph (the plain chart beside its constellation), Screens and More like this.
+- **Domain hubs, search, My Stuff**, and a Browse drawer at the upper left.
+- **Opening ident:** once per session, the stars form the Dreamcatcher mark, then become the first hero app's graph.
+- **Your apps:** your drafts, published and archived apps. Publish, unpublish, archive, delete and request a screenshot. The editor previews the hero and both tiles live as you type the graph's numbers.
+- **Site admin:** a filterable table of every app with status, hero, Original and Top 10 controls; home curation (hero order, Top 10 order, rename, hide and reorder rows); users and roles; and the activity log.
 
-## What is live vs. still needs your environment
+## How art is made
 
-**Works immediately:** the gallery, interactions, locally saved favorites, sample catalog, thumbnail studio, metadata-to-description pipeline and SVG fallback generation.
+Each app has a `keyVisual`: its main chart as plain numbers, in one of 10 types (line, area, bar, funnel, wave, scatter, network, flow, radial, matrix). `dist/lib/constellation.mjs` validates it and lays out stars and lines, then the same formation draws the 16:9 tile, the 2:3 tile, and the live hero sky. The graph comes, in order, from:
 
-**Implemented but not connected to Relativity:** Playwright screenshot capture. You must provide approved internal preview URLs, network access, readiness markers, and any capture account state. No existing Dreamcatcher source repository or internal app endpoint was supplied. The preview displays labeled fallback artwork until successful capture records exist. This is not evidence of screenshots being captured from Relativity applications.
+1. The app itself, via `<script type="application/json" data-dreamcatcher-key-visual>` read by the capture worker.
+2. The owner's entry in the editor.
+3. A generated pattern per domain, so a brand-new app has art immediately.
 
-The gallery has no live authentication, row-level data enforcement, app launcher integration, personalization model, BigQuery queries, or backend persistence. Existing production contracts must be preserved when porting the design. Demo owners, apps and descriptions are sample metadata; they are not an inventory of approved company apps.
+Screenshots of the real app appear on the title page.
 
-## Automatic thumbnail pipeline
+## Connecting the real database
 
-1. Add/update metadata in `data/apps.json`.
-2. The app deployment pipeline runs `node capture/worker.mjs <config-path>` on an approved internal runner after deployment readiness.
-3. The worker captures a 1440 × 810 JPEG and writes `data/capture-manifest.json` atomically.
-4. `npm run build` chooses a fresh approved captured screenshot, then an approved local screenshot, then domain artwork.
-5. Your existing asset publishing adapter publishes the generated catalog and image files together.
+The CRUD database lives on the work network, so this repository builds against a contract instead: [docs/CRUD_CONTRACT.md](docs/CRUD_CONTRACT.md). `dist/lib/db-core.mjs` is a pure reference implementation of every route and permission, and `tests/db-core.test.mjs` is its spec. Implement the routes on the real database, with identity from your sign-in system, and the front end switches over automatically. [docs/HANDOFF_PROMPT.md](docs/HANDOFF_PROMPT.md) is a paste-ready prompt for doing that on the work computer.
 
-That ordering ensures automatic app screenshots are the **primary thumbnail**. Description generation does not infer functionality from pixels. It uses trusted `task`, `subject`, and `audience` fields, unless an owner-approved description exists.
-
-Read [Screenshot capture](docs/SCREENSHOT_PIPELINE.md) for setup and the publication hook. This repository includes a CLI worker, not an always-on capture service; execution becomes automatic when your deployment system invokes the hook. The sample CI capture workflow is deliberately disabled until you configure the work runner and private asset destination.
+Running the dev server with `DEV_AUTH=0` turns off the sample sign-in. Identity then comes only from a header set by your sign-in proxy (`TRUSTED_USER_HEADER`), or you get a 401.
 
 ## Repository map
 
 ```text
-capture/                 Playwright screenshot worker, policy, exact dependency lock
- data/apps.json          App metadata source (sample records)
- dist/                   Complete runnable static app and generated catalog/artwork
- docs/DESIGN_BEHAVIOR.md  Visual/interaction behavior mapping
- docs/HANDOFF_PROMPT.md   Paste-ready prompt for the existing work codebase
- docs/SCREENSHOT_PIPELINE.md
- scripts/                Serve, generate, validate
- tests/                  Meaningful unit/policy tests, using a mock browser
- .github/workflows/ci.yml
+dist/                       The app (static ES modules)
+  app.mjs                   Pages, hero, rails, admin, router
+  lib/sky.mjs               Canvas sky: star formations, morphs, tile-to-title flight
+  lib/constellation.mjs     Key graph validation, formations, SVG art
+  lib/brand.mjs             Hanging-ligature mark, favicon, logo constellation
+  lib/db-core.mjs           CRUD contract: one pure request handler
+  lib/api.mjs               Server or browser store, same calls
+  lib/catalog.mjs           App validation, generated descriptions
+  lib/chart.mjs             Plain chart for "The graph behind the art"
+  lib/themes.mjs            Domain colours, motifs, title faces
+data/apps.json, users.json  Sample apps and users (illustrative, not a real inventory)
+scripts/                    Dev server, build, static checks
+capture/                    Playwright worker: screenshots and published key graphs
+docs/                       Design behaviour, CRUD contract, capture pipeline, handoff prompt
+tests/                      Node test runner suites
 ```
 
-## Verification
+## What was verified here
 
-13 automated tests pass. JavaScript syntax and all generated asset paths pass. Capture tests use a **mock browser** to check readiness, masking, allowlists, errors, cleanup, and output selection; they do not prove a real internal app renders. End-to-end Chromium capture and interactive browser QA were not run in this environment. Run the work-environment acceptance checklist before merging.
+All 34 tests pass, along with the build and static checks (JS syntax, asset paths, unique IDs, well-formed SVG). Every page was checked in Chromium at 1440 × 900 and 390 × 844, with and without reduced motion, in both server and static modes. That included creating and publishing an app end to end and switching between viewer, creator and admin.
 
-## GitHub handoff
+Not verified here: the real Dreamcatcher database, sign-in, and screenshots or key graphs from real internal apps. Those need the work network. The capture tests use a mock browser.
 
-The downloadable archive excludes deployment identity and Git credentials. It is ready to initialize as a new repository or use as a design reference in your existing repo:
-
-```sh
-git init -b main
-git add .
-git commit -m "Add Dreamcatcher cinematic gallery and screenshot pipeline"
-```
-
-Choose the remote and visibility explicitly when publishing. No GitHub repository has been created by this deliverable.
+Apps, owners, rankings and graphs in `data/` are sample data for design review.

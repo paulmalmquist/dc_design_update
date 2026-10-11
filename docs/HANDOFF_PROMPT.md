@@ -1,77 +1,59 @@
-# Handoff prompt — Dreamcatcher cinematic gallery upgrade
+# Handoff prompt: port the Dreamcatcher redesign into the real app
 
-Paste the following into Codex or Claude on the work computer, alongside this repository and the actual Dreamcatcher checkout.
+Paste everything between the rules into Claude (or Codex) on the work computer. Attach this repository and the real Dreamcatcher checkout, and make sure the session can reach the Dreamcatcher database.
 
 ---
 
-You are upgrading the **existing Dreamcatcher application**, not replacing it with a disconnected demo. Implement the reference design in the attached `dreamcatcher-cinema` repository while preserving Dreamcatcher's constellation, starfield, purple identity, brand, working app routes, authentication, permissions, deployment contracts, and existing features.
+You are upgrading the **existing Dreamcatcher app** using the reference in the attached `dc_design_update` repository. Port its design and behaviour into the real codebase and connect them to our real CRUD database. Don't drop it in as a separate demo. Keep our working routes, sign-in, permissions, deployment and existing features.
 
-The desired experience is the cinematic browsing language of HBO Max applied to our app catalog: useful app screenshots, restrained hover reveals, horizontal collections, a personal My List, and an informative detail view. Keep our existing aesthetic. Do not copy HBO branding or entertainment content. Use the reference as interaction/design guidance; use our current production stack and components.
+**What we want:** browsing our apps should feel like HBO Max. That means a rotating billboard hero, hover-to-preview in the hero, edge-to-edge rows, a Top 10, full title pages, My Stuff and a Browse menu. Every app's art is a constellation drawn from that app's main graph. We also want a personal admin (Your apps) and a site admin, both backed by our database. Run the reference (`npm run build && npm start`, then open http://127.0.0.1:4173) and read `docs/DESIGN_BEHAVIOR.md` before changing anything.
 
-**Critical requirement:** Every app's primary thumbnail must be an automatically generated **screenshot of the actual app**. A generated illustration is only a clearly identified fallback. Also generate a meaningful description automatically from app metadata. Do not ask users to manually maintain screenshots as the normal workflow.
+Work through implementation and verification on your own. Ask me only about a decision that can't be undone, or about access you don't have. Never say an internal system was verified when you couldn't reach it.
 
-Work autonomously through implementation and verification. Read repository instructions, inspect the existing code and data contracts, preserve unrelated work, and document discovered assumptions. Ask only for a consequential unresolved decision or unavailable credentials/access. Never claim internal systems were verified when they were not reachable.
+## 1. Map what exists
 
-## 1. Discover the existing implementation first
+Find and summarise:
+- The front-end stack, routing, state, design tokens, and current catalog components.
+- **The CRUD database**: its tables or collections for apps, owners and teams, users and roles, saved lists, history, publication status and audit. Note how the backend exposes them and how sign-in identity reaches the backend.
+- How app access is checked, and how that differs from data access inside an app.
+- Where screenshots and assets live, and whether a capture runner exists.
 
-Identify:
-- The real gallery/catalog API and schema, component tree, routing, state, design tokens, constellation assets, launch flow, and deployment mechanism.
-- How catalog visibility and app access are checked, and how data-level authorization differs from app access.
-- The signed-in user identity, My List/history storage, ownership metadata, certification/freshness sources, and app publication events.
-- Existing screenshot/asset storage and permissions, approved internal runners, browser automation capabilities, and the environment's approved auth patterns.
+Write this up as a short integration map, then build against the real interfaces. Don't add a new database, auth system or framework because the reference happens to be plain JavaScript.
 
-Summarize these findings in a concise integration map, then implement against the real interfaces. Do not introduce a new database, auth framework, frontend framework, app gateway, or AI vendor merely because the reference prototype is static JavaScript.
+## 2. Implement the API contract on our database
 
-## 2. Upgrade the visual behavior
+`docs/CRUD_CONTRACT.md` defines the routes, roles and records. `dist/lib/db-core.mjs` is the reference implementation, and `tests/db-core.test.mjs` is its spec.
 
-Use `docs/DESIGN_BEHAVIOR.md` and the runnable `dist/` prototype as the reference.
+- Map each record onto our existing tables. Reuse existing owner, team and status fields rather than adding parallel ones. If something has no home (for example `keyVisual`, `logline` or curation), propose the smallest schema change and show it to me before applying a migration.
+- Implement the routes in our backend, or map the front end's `api.call(method, path, body)` onto our existing endpoints, whichever fits our backend. Reuse `validateApp` and `validateKeyVisual` from `dist/lib/` so validation is identical.
+- Identity comes **only** from our sign-in system. `ownerId`, `origin`, `keyVisualSource`, `featured`, `original` and `rank` are server-controlled, exactly as in `writeApp`.
+- Keep the permission rules: drafts are 404 to non-owners, only owners and admins edit, only admins curate and change roles, there is always at least one admin, and every write is audited.
+- Port `tests/db-core.test.mjs` so it runs against our implementation.
+- Remove the dev sign-in switcher and the browser-storage fallback from the production build. A failed or signed-out API must show an honest error, never sample data.
 
-Preserve the actual constellation geometry and existing interactive behavior. Retain “Dream it. Share it.” where appropriate. Use near-black depth, restrained violet atmosphere, lilac focus accents, clear typography and room around the artwork. Show the collection promptly; avoid a hero that hides the product on every screen.
+## 3. Port the experience
 
-Build consistent 16:9 app screenshot frames. On pointer hover, lift about 4px and scale about 1.018×; reveal the purpose and quick save action with a soft lilac outline. Use 180–300ms transform/opacity transitions. Keep layout stable and avoid clipped cards or neighboring overlap. Treat these as proposed values to tune to the existing app, not exact HBO Max specifications.
+Use our components and styles where they exist. Bring over:
+- **The sky engine** (`dist/lib/sky.mjs`): a fixed canvas whose stars morph between formations. These include the logo ident, the hero graph, the flight from a tile into the title page, and the hover preview.
+- **Constellation art** (`dist/lib/constellation.mjs`): `formation()` and `artSvg()` turn the key graph into tiles (16:9 and 2:3) and hero art. Generated patterns cover apps without a graph.
+- **Pages**: Home (hero plus curated rows), title page, domain hubs, search, My Stuff, Your apps with the live-preview editor, and Site admin (apps table, home curation, users and roles, activity).
+- **Brand**: the hanging-ligature mark and favicon (`dist/lib/brand.mjs`), the per-domain title faces, and the self-hosted OFL fonts.
+- Keyboard, touch, reduced motion and focus behaviour as described in `docs/DESIGN_BEHAVIOR.md`.
 
-Keyboard focus must reveal the same information. Touch must work in one tap without depending on hover. Maintain visible focus, contrast, native semantics, responsive layouts and reduced-motion support. No autoplaying carousels, video previews, flashing stars or endless animation.
+Keep the documented-versus-adapted distinction honest in any copy. Hover-to-preview is HBO Max's documented homepage behaviour on connected TVs, and we adapted it for the browser. Our timings are our own.
 
-Support horizontal shelves, search by purpose/name/team, domain filters, useful empty/loading/error states, a detail dialog with Escape and restored focus, and My List. Use real existing user-specific persistence where available. Only label recently launched apps if there is actual launch history; detail views are not launches. Do not fabricate personalized recommendations, adoption counts, certifications or activity.
+## 4. Get each app's main graph automatically
 
-Preserve existing SDK/About/Build-and-publish navigation and all real capabilities even where they are only represented in the prototype's design notes. Never silently show example apps after a production API failure. Existing access and data warnings must remain clear and accurate.
+Wire `capture/worker.mjs` into our deploy pipeline (`docs/SCREENSHOT_PIPELINE.md`). For two real apps, add `<script type="application/json" data-dreamcatcher-key-visual>` with the main chart's numbers to their safe preview route. Capture them, and confirm that the tile and hero constellations match the charts and change when the data changes. Screenshots go on the title page under Screens. Use safe preview data and our existing asset permissions. No credentials or sensitive captures should end up in Git or public CI artifacts.
 
-## 3. Integrate automated screenshot capture
+## 5. Verify
 
-Adapt `capture/worker.mjs`, `capture/policy.mjs` and `docs/SCREENSHOT_PIPELINE.md` into the existing deployment/job system.
+Using our real test and browser tooling, check:
+- **Content and editing:** viewer, creator and admin each see only what they should, both in the UI and when calling the API directly. Create, edit, publish, unpublish, archive and delete an app end to end. The new app gets art right away and appears in New on Dreamcatcher.
+- **Curation:** hero order, Top 10 and row settings save and show on Home. The activity log records each change.
+- **Browsing:** hover preview, the Browse drawer, the title-page flight, search, My Stuff, phone width (390 px), 200% text, reduced motion, and keyboard-only use.
+- **Failures:** existing auth, data permissions, navigation and unrelated tests still pass. A signed-out or failing API shows an honest error.
 
-Required flow:
-1. An app publishes or materially updates; the existing pipeline emits the app ID/version after readiness.
-2. A worker on the approved internal network resolves the capture target from the trusted app registry. No arbitrary URL input from end users.
-3. It opens the app's actual UI in an app-owned thumbnail mode with representative safe data and a dedicated least-privilege capture identity.
-4. It waits for an explicit ready marker after app data/UI rendering, fonts and images. It must not capture loading skeletons, auth pages or error states.
-5. It masks configured sensitive regions, freezes animation, captures a clean 1440 × 810 image, and records the source version, capture time and revision.
-6. It saves the image in our approved asset store and atomically updates the app metadata reference. Use cache-busted immutable objects and a catalog pointer. Do not expose internal URLs, cookies or tokens in the catalog.
-7. The gallery uses the actual screenshot first. If capture fails, retain the latest approved fresh screenshot. Fall back to semantic constellation artwork if absent, expired or broken.
-
-Honor exact network origin allowlists, validate redirects/subresources, and use network-level egress controls. Do not rely on URL parsing as a complete SSRF defense. Internal origins may intentionally resolve to private addresses; explicitly approve those destinations rather than globally allowing them. Use app-owned safe preview routes instead of weakening browser restrictions indiscriminately.
-
-Keep screenshot visibility compatible with gallery and app authorization. A screenshot can leak data even if the launch button is protected. Use safe/approved data and enforce asset access. Do not silently use a real user's privileged browser session. Do not embed credentials, unredacted screenshots or raw sensitive data in Git or public CI artifacts.
-
-Make job retries bounded, jobs idempotent by app/version, and concurrent publication safe. Add operational states (`pending`, `capturing`, `ready`, `stale`, `failed`) to the existing admin metadata if feasible, with actionable error reasons and retry controls. Preserve a known-good capture on failure and restore the manifest across clean CI runs. The reference CLI is not an always-running service; connect it to our real pipeline and asset store. Schedule periodic refresh only through our existing scheduler if needed and authorized.
-
-## 4. Generate accurate descriptions
-
-Prefer an owner-approved description. Otherwise compose a short purpose statement from trusted title, task, subject, audience and capabilities metadata. Example: “Trace relationships between reports, tables, and columns for data consumers.” Missing metadata should produce a clear incomplete state, not guessed features.
-
-Use existing catalog data, approved README/manifest content or the app's registered purpose when available. If an approved LLM is used for richer drafting, constrain output to cited inputs, validate the schema, track provenance and review status, and treat source content as untrusted input. A screenshot alone is insufficient to determine app capabilities or authority. Do not invent live data, certified status, freshness, cost savings, adoption numbers, lineage coverage or permissions.
-
-## 5. Verify the complete user journey
-
-Use the actual app's existing test and browser tooling. Verify:
-- Desktop and mobile catalog browsing, filtering, searching, keyboard focus, one-tap details, Escape/focus return, My List persistence and actual authorized launch behavior.
-- Hover treatments at shelf edges, no layout shifts, no body overflow at 320px, 200% text enlargement and reduced motion.
-- Two real app screenshots are captured and displayed. A deployed app change triggers a new image revision automatically.
-- Error, login, timeout, missing permission and missing readiness conditions preserve a good screenshot and report failure. Stale/broken image fallbacks are labeled accurately.
-- Safe preview data, masking, asset access, network restrictions, and absence of credentials/sensitive captures in commits.
-- Production catalog failure is honest; no hidden substitution with fixture apps.
-- Existing auth, data permissions, navigation, SDK/About content, release contracts and unrelated tests still behave correctly.
-
-Update the production implementation, docs and configuration examples. Deliver the change as a focused reviewable branch/PR using the repository's normal process. Include actual changed files, evidence from checks, the two real screenshot-capture runs, and any exact remaining environment dependency. Do not assert that the integration is complete until the real screenshot path and existing access controls have been verified. Do not deploy to production or change sharing unless already authorized by the session or normal repository workflow.
+Deliver a focused branch and PR through our normal process. List the changed files, check results, screenshots of each page, and any remaining environment dependency. Don't deploy to production.
 
 ---
