@@ -6,7 +6,7 @@ Paste everything between the rules into Claude (or Codex) on the work computer. 
 
 You are upgrading the **existing Dreamcatcher app** using the reference in the attached `dc_design_update` repository. Port its design and behaviour into the real codebase and connect them to our real CRUD database. Don't drop it in as a separate demo. Keep our working routes, sign-in, permissions, deployment and existing features.
 
-**What we want:** browsing our apps should feel like HBO Max. That means a rotating billboard hero, hover-to-preview in the hero, edge-to-edge rows, a Top 10, full title pages, My Stuff and a Browse menu. Every app's art is a constellation drawn from that app's main graph. We also want a personal admin (Your apps) and a site admin, both backed by our database. Run the reference (`npm run build && npm start`, then open http://127.0.0.1:4173) and read `docs/DESIGN_BEHAVIOR.md` before changing anything.
+**What we want:** browsing our apps should feel like HBO Max. That means a rotating billboard hero, hover-to-preview in the hero, edge-to-edge rows, a Top 10, full title pages, My Stuff and a Browse menu. Landscape app cards use fresh, approved real screenshots. Portrait collections and heroes retain graph-derived constellation art, also used as the labeled fallback when captures are unavailable. We also want a personal admin (Your apps) and a site admin, both backed by our database. Run the reference (`npm run build && npm start`, then open http://127.0.0.1:4173) and read `docs/DESIGN_BEHAVIOR.md` before changing anything.
 
 Work through implementation and verification on your own. Ask me only about a decision that can't be undone, or about access you don't have. Never say an internal system was verified when you couldn't reach it.
 
@@ -44,7 +44,7 @@ Keep the documented-versus-adapted distinction honest in any copy. Hover-to-prev
 
 ## 4. Get each app's main graph automatically
 
-Wire `capture/worker.mjs` into our deploy pipeline (`docs/SCREENSHOT_PIPELINE.md`). For two real apps, add `<script type="application/json" data-dreamcatcher-key-visual>` with the main chart's numbers to their safe preview route. Capture them, and confirm that the tile and hero constellations match the charts and change when the data changes. Screenshots go on the title page under Screens. Use safe preview data and our existing asset permissions. No credentials or sensitive captures should end up in Git or public CI artifacts.
+Wire `capture/worker.mjs` into our deploy pipeline (`docs/SCREENSHOT_PIPELINE.md`). For two real apps, add `<script type="application/json" data-dreamcatcher-key-visual>` with the main chart's numbers to their safe preview route. Capture them, and confirm that the tile and hero constellations match the charts and change when the data changes. Screenshots go on standard landscape cards and under Screens; keep the constellation hero and portrait collections. Wire `capture/queue.mjs` semantics to our existing durable job runner: queued/running/succeeded/failed/not_configured, idempotent requests, safe failure, and status updates. Do not accept arbitrary capture URLs from users. Add validated HTTPS launch URLs from our app registry; no fake launch-success toasts. Use safe preview data and our existing asset permissions. No credentials or sensitive captures should end up in Git or public CI artifacts.
 
 ## 5. Verify
 
@@ -52,8 +52,10 @@ Using our real test and browser tooling, check:
 - **Content and editing:** viewer, creator and admin each see only what they should, both in the UI and when calling the API directly. Create, edit, publish, unpublish, archive and delete an app end to end. The new app gets art right away and appears in New on Dreamcatcher.
 - **Curation:** hero order, Top 10 and row settings save and show on Home. The activity log records each change.
 - **Browsing:** hover preview, the Browse drawer, the title-page flight, search, My Stuff, phone width (390 px), 200% text, reduced motion, and keyboard-only use.
-- **Failures:** existing auth, data permissions, navigation and unrelated tests still pass. A signed-out or failing API shows an honest error.
+- **Failures:** existing auth, data permissions, navigation and unrelated tests still pass. A signed-out or failing API shows an honest error. Test HTML login redirects, 500s, offline mode, hidden draft/history access, expired/broken screenshots, capture failure, and database write failures.
+- **Interaction regressions:** mouse and keyboard both reveal descriptions; dwell preview clears in row whitespace; fast navigation cannot finish an obsolete hero transition; My List removes cards immediately; pause/profile/save remain usable on phones. Run all `tests/*.test.mjs`, then real browser QA—unit stubs are not visual sign-off.
 
 Deliver a focused branch and PR through our normal process. List the changed files, check results, screenshots of each page, and any remaining environment dependency. Don't deploy to production.
 
 ---
+

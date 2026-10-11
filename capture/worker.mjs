@@ -36,24 +36,25 @@ export async function captureOne(browser, config, app, outputDir, env=process.en
     return {path:`screenshots/${name}`,capturedAt:new Date().toISOString(),revision,approved:true,width:1440,height:810,source:'playwright',appId:app.id,...(keyVisual?{keyVisual}:{})};
   } finally {await context.close();}
 }
-export async function runCapture({configPath=path.join(root,'capture/config.json'),onlyId,chromium,env=process.env}={}){
-  const config=validateConfig(JSON.parse(await readFile(configPath,'utf8')));
-  const manifestPath=path.join(root,'data/capture-manifest.json');
+export async function runCapture({configPath=path.join(root,'capture/config.json'),config:providedConfig,catalog:providedCatalog,rootDir=root,onlyId,chromium,env=process.env}={}){
+  const config=validateConfig(providedConfig || JSON.parse(await readFile(configPath,'utf8')));
+  const manifestPath=path.join(rootDir,'data/capture-manifest.json');
   // Exclusive lock prevents concurrent jobs from dropping each other's manifest entries.
-  const lock=path.join(root,'capture/.capture-lock');try{await mkdir(lock);}catch{throw new Error('Another capture is running (or a stale .capture-lock needs investigation).');}
+  const lock=path.join(rootDir,'capture/.capture-lock');try{await mkdir(lock);}catch{throw new Error('Another capture is running (or a stale .capture-lock needs investigation).');}
   let browser;
   try {
     let manifest={version:1,apps:{},maxAgeHours:config.maxAgeHours||168};try{manifest=JSON.parse(await readFile(manifestPath,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;}
     if(!manifest.apps||typeof manifest.apps!=='object')throw new Error('Invalid existing capture manifest.');
     manifest.maxAgeHours=config.maxAgeHours||168;
     const selected=onlyId?config.apps.filter(a=>a.id===onlyId):config.apps;if(!selected.length)throw new Error('No configured app matches the requested ID.');
-    const catalog=JSON.parse(await readFile(path.join(root,'data/apps.json'),'utf8'));
-    if(selected.some(a=>!catalog.some(c=>c.id===a.id)))throw new Error('Capture ID is absent from data/apps.json.');
+    const catalog=providedCatalog || JSON.parse(await readFile(path.join(rootDir,'data/apps.json'),'utf8'));
+    if(selected.some(a=>!catalog.some(c=>c.id===a.id)))throw new Error('Capture ID is absent from the app catalog.');
     if(!chromium)({chromium}=await import('playwright'));
     browser=await chromium.launch({headless:true});let failed=0;
-    for(const app of selected){try{const result=await captureOne(browser,config,app,path.join(root,'dist/screenshots'),env);manifest.apps[app.id]={...result,lastAttemptAt:result.capturedAt,lastAttemptStatus:'succeeded'};console.log(`${app.id}: screenshot captured`);}catch{failed++;manifest.apps[app.id]={...manifest.apps[app.id],lastAttemptAt:new Date().toISOString(),lastAttemptStatus:'failed'};console.error(`${app.id}: capture failed; last approved image retained if still fresh. Check app readiness, allowed origins, and capture credentials.`);}}
+    for(const app of selected){try{const result=await captureOne(browser,config,app,path.join(rootDir,'dist/screenshots'),env);manifest.apps[app.id]={...result,lastAttemptAt:result.capturedAt,lastAttemptStatus:'succeeded'};console.log(`${app.id}: screenshot captured`);}catch{failed++;manifest.apps[app.id]={...manifest.apps[app.id],lastAttemptAt:new Date().toISOString(),lastAttemptStatus:'failed'};console.error(`${app.id}: capture failed; last approved image retained if still fresh. Check app readiness, allowed origins, and capture credentials.`);}}
     await atomicJson(manifestPath,manifest);
     return {captured:selected.length-failed,failed};
   } finally {try{if(browser)await browser.close();}finally{await rm(lock,{recursive:true,force:true});}}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const configPath=process.argv[2]?path.resolve(process.argv[2]):undefined;runCapture({configPath,onlyId:process.env.CAPTURE_APP_ID}).then(result=>{console.log(JSON.stringify(result));if(result.failed)process.exitCode=1;}).catch(error=>{console.error(error.message);process.exitCode=1;});}
+

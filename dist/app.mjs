@@ -6,12 +6,15 @@ import {markSvg, logoFormation} from './lib/brand.mjs';
 import {Sky} from './lib/sky.mjs';
 import {connect} from './lib/api.mjs';
 import {RAILS, STATUSES, ROLES} from './lib/db-core.mjs';
+import {approvedScreenshot, captureMessage} from './lib/capture-record.mjs';
+import {wireCardPreview, createTransitionGuard} from './lib/interactions.mjs';
 
 // ── basics ───────────────────────────────────────────────────────────────────
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)'), reduced = () => RM.matches;
 const DAY = 864e5, DWELL = 8000, NEW_DAYS = 21;
 const wait = ms => new Promise(r => setTimeout(r, ms));
+let pageCleanups = [];
 let uid = 0; const mini = () => markSvg({id: `m${++uid}`, title: ''});
 const ICON = {
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>',
@@ -25,14 +28,14 @@ const chev = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d < 0 
 
 const S = {api: null, me: null, apps: [], byId: new Map(), curation: null, list: new Set(), history: [], from: null, booted: false};
 const sky = new Sky($('#sky'), {reduced: reduced()});
-RM.addEventListener?.('change', () => sky.setReduced(reduced()));
+RM.addEventListener?.('change', () => { sky.setReduced(reduced()); H.schedule(); });
 
 // ── data ─────────────────────────────────────────────────────────────────────
 const call = (m, p, b) => S.api.call(m, p, b);
 function toApp(rec) {
   const a = enrich(rec);
   return {...a, origin: rec.origin || 'seed', status: rec.status || 'published', ownerId: rec.ownerId || '', ownerName: rec.ownerName || '', createdAt: rec.createdAt || '',
-    updatedAt: (rec.updatedAt || '').slice(0, 10) || a.updatedAt, capture: rec.capture || null, screenshot: rec.screenshot || (a.screenshotSource === 'approved-screenshot' ? {path: a.screenshotPath} : null)};
+    updatedAt: (rec.updatedAt || '').slice(0, 10) || a.updatedAt, capture: rec.capture || null, screenshot: approvedScreenshot(rec.screenshot, a.id)};
 }
 async function refresh() {
   const [apps, cur, list, hist] = await Promise.all([call('GET', 'apps'), call('GET', 'curation'), call('GET', 'me/list'), call('GET', 'me/history')]);
@@ -83,13 +86,17 @@ function meta(a) {
 }
 const saved = id => S.list.has(id);
 const saveBtn = (a, cls = 'btn-round') => `<button class="${cls}" type="button" data-save="${a.id}" aria-pressed="${saved(a.id)}" aria-label="${saved(a.id) ? 'Remove from' : 'Add to'} My List: ${esc(a.title)}">${saved(a.id) ? '✓' : '+'}</button>`;
+const launchBtn = a => a.launchUrl
+  ? `<a class="btn btn-play" href="${esc(a.launchUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(a.title)} in a new tab">${ICON.play}Open app</a>`
+  : '<button class="btn btn-play" type="button" disabled title="Add an HTTPS launch URL in the app editor">Launch not configured</button>';
 function graphNote(a) {
   const f = formation(a);
   return `<p class="graph-note">${f.source === 'generated' ? 'Constellation: <b>placeholder pattern</b>, until the app publishes its key graph' : `Constellation drawn from ${f.source === 'app' ? 'the app’s own ' : ''}<b>${esc(f.label || `${f.type} chart`)}</b>`}</p>`;
 }
 function tile(a, {shape = 'wide', rank = 0, foot = ''} = {}) {
   const tall = shape !== 'wide', badge = justAdded(a) ? '<span class="badge">Just added</span>' : isNew(a) ? '<span class="badge">New</span>' : isUpdated(a) ? '<span class="badge badge--updated">Updated</span>' : '';
-  const link = `<a class="tile-link" href="#app/${a.id}" data-tile="${a.id}" aria-label="${esc(`${a.title}. ${a.domain}. ${a.logline}`)}"><div class="tile-art"><img src="${art(a, tall ? 'tall' : 'wide')}" alt="" decoding="async">${badge}${a.original ? `<span class="corner-mark" aria-hidden="true">${mini()}</span>` : ''}<div class="tile-info">${titleArt(a, 'div', 'tile-title')}<div class="tile-hover"><div><p class="meta-line">${esc(a.domain)}</p><p>${esc(a.logline)}</p></div></div></div></div></a>${saveBtn(a, 'tile-save')}${foot ? `<p class="tile-foot">${esc(foot)}</p>` : ''}`;
+  const screenshot = !tall && approvedScreenshot(a.screenshot, a.id), fallback = art(a, tall ? 'tall' : 'wide');
+  const link = `<a class="tile-link" href="#app/${a.id}" data-tile="${a.id}" aria-label="${esc(`${a.title}. ${a.domain}. ${a.logline}`)}"><div class="tile-art ${screenshot ? 'tile-art--screenshot' : ''}"><img src="${esc(screenshot?.path || fallback)}" ${screenshot ? `data-fallback="${fallback}"` : ''} alt="${screenshot ? esc(`${a.title} app screenshot`) : ''}" loading="lazy" decoding="async">${badge}${a.original ? `<span class="corner-mark" aria-hidden="true">${mini()}</span>` : ''}<div class="tile-info">${titleArt(a, 'div', 'tile-title')}<div class="tile-hover"><div><p class="meta-line">${esc(a.domain)} · ${screenshot ? 'App screenshot' : tall ? 'Constellation artwork' : 'Constellation preview'}</p><p>${esc(a.logline)}</p></div></div></div></div></a>${saveBtn(a, 'tile-save')}${foot ? `<p class="tile-foot">${esc(foot)}</p>` : ''}`;
   return rank ? `<li class="tile tile--top" data-id="${a.id}"><span class="rank" aria-hidden="true">${rank}</span>${link}</li>` : `<li class="tile tile--${tall ? 'tall' : 'wide'}" data-id="${a.id}">${link}</li>`;
 }
 function rail({id, title, sub = '', items, shape = 'wide', top = false, href = '', foot = null}) {
@@ -107,39 +114,45 @@ const status = s => `<span class="status status--${s}">${s[0].toUpperCase() + s.
 
 // ── hero carousel ────────────────────────────────────────────────────────────
 const H = {
+  transition: createTransitionGuard(),
   list: [], i: 0, timer: 0, paused: false, focused: false, preview: null, visible: true, io: null, el: null,
   mount(list, opening) {
+    this.unmount();
     this.list = list; this.i = 0; this.preview = null; this.el = $('#hero'); clearTimeout(this.timer);
     this.io?.disconnect(); this.io = new IntersectionObserver(([e]) => { this.visible = e.intersectionRatio > .3; this.schedule(); }, {threshold: [0, .3, .6]}); this.io.observe(this.el);
     this.focused = false;                                     // keyboard focus inside the hero holds the rotation
     this.el.addEventListener('focusin', e => { if (e.target.matches(':focus-visible')) { this.focused = true; this.schedule(); } });
-    this.el.addEventListener('focusout', e => { if (!this.el.contains(e.relatedTarget)) { this.focused = false; this.schedule(); } });
+    this.el.addEventListener('focusout', e => { if (!this.el?.contains(e.relatedTarget)) { this.focused = false; this.schedule(); } });
     this.el.querySelector('.pips').innerHTML = list.map((a, k) => `<button class="pip" type="button" data-pip="${k}" aria-label="Show ${esc(a.title)}"><i></i></button>`).join('');
-    this.paint(true, opening);
+    this.paint(true, opening); this.syncPause();
   },
+  unmount() { this.transition.cancel(); clearTimeout(this.timer); this.io?.disconnect(); this.io = null; this.el = null; this.preview = null; },
   app() { return this.preview || this.list[this.i]; },
   async paint(first = false, opening) {
-    const a = this.app(), copy = $('#hero-copy'); if (!a || !copy) return;
-    const html = `${kicker(a, this.preview ? 'preview' : '')}${titleArt(a, 'h2')}${meta(a)}<p class="logline">${esc(a.logline)}</p><div class="actions"><button class="btn btn-play" type="button" data-open="${a.id}">${ICON.play}Open app</button><a class="btn btn-ghost" href="#app/${a.id}" data-hero-info="${a.id}">${ICON.info}More info</a>${saveBtn(a)}</div>${graphNote(a)}`;
+    const a = this.app(), el = this.el, copy = $('#hero-copy'), current = this.transition.begin(); if (!a || !copy || !el) return;
+    const valid = () => current() && el === this.el && el.isConnected && copy.isConnected;
+    const html = `${kicker(a, this.preview ? 'preview' : '')}${titleArt(a, 'h2')}${meta(a)}<p class="logline">${esc(a.logline)}</p><div class="actions">${launchBtn(a)}<a class="btn btn-ghost" href="#app/${a.id}" data-hero-info="${a.id}">${ICON.info}More info</a>${saveBtn(a)}</div>${graphNote(a)}`;
     if (first || reduced()) copy.innerHTML = html;
-    else { copy.classList.add('is-leaving'); await wait(260); if (!copy.isConnected) return; copy.innerHTML = html; copy.classList.remove('is-leaving'); copy.classList.add('is-entering'); setTimeout(() => copy.classList.remove('is-entering'), 720); }
+    else { copy.classList.add('is-leaving'); await wait(260); if (!valid()) return; copy.innerHTML = html; copy.classList.remove('is-leaving'); copy.classList.add('is-entering'); setTimeout(() => { if (valid()) copy.classList.remove('is-entering'); }, 720); }
+    if (!valid()) return;
     this.el.classList.toggle('is-previewing', !!this.preview);
     $$('.pip', this.el).forEach((p, k) => { p.classList.toggle('is-done', k < this.i); p.classList.remove('is-active'); p.setAttribute('aria-current', k === this.i ? 'true' : 'false'); });
     const pip = $$('.pip', this.el)[this.i]; if (pip) { void pip.offsetWidth; pip.classList.add('is-active'); }
-    if (first && S.intro) { await S.intro; if (!this.el?.isConnected) return; }
+    if (first && S.intro) { await S.intro; if (!valid()) return; }
     sky.show(formation(a), {target: () => $('#hero-art'), color: accent(a), duration: first && opening ? 1700 : 1500});
     this.schedule();
   },
-  go(i) { this.preview = null; this.i = (i + this.list.length) % this.list.length; this.paint(); },
+  go(i) { if (!this.list.length) return; this.preview = null; this.i = (i + this.list.length) % this.list.length; this.paint(); },
   schedule() {
     clearTimeout(this.timer); if (!this.el?.isConnected) return;
     this.el.classList.toggle('is-paused', this.paused || this.focused);
     if (this.paused || this.focused || this.preview || !this.visible || reduced() || document.hidden || this.list.length < 2) return;
     this.timer = setTimeout(() => this.go(this.i + 1), DWELL);
   },
-  startPreview(a) { if (!this.el?.isConnected || a === this.app()) return; this.preview = a; this.paint(); },
+  startPreview(a) { if (!this.el?.isConnected || a === this.app()) return; this.preview = a; clearTimeout(this.timer); this.paint(); },
   endPreview() { if (!this.preview) return; this.preview = null; this.paint(); },
-  togglePause() { this.paused = !this.paused; const b = $('[data-hero=pause]'); if (b) { b.innerHTML = this.paused ? ICON.resume : ICON.pause; b.setAttribute('aria-label', this.paused ? 'Resume rotation' : 'Pause rotation'); b.setAttribute('aria-pressed', String(this.paused)); } if (!this.paused) { const p = $$('.pip', this.el)[this.i]; if (p) { p.classList.remove('is-active'); void p.offsetWidth; p.classList.add('is-active'); } } this.schedule(); }
+  syncPause() { const b = $('[data-hero=pause]'); if (b) { b.innerHTML = this.paused ? ICON.resume : ICON.pause; b.setAttribute('aria-label', this.paused ? 'Resume rotation' : 'Pause rotation'); b.setAttribute('aria-pressed', String(this.paused)); } },
+  togglePause() { this.paused = !this.paused; this.syncPause(); this.schedule(); }
 };
 document.addEventListener('visibilitychange', () => H.schedule());
 
@@ -147,18 +160,18 @@ document.addEventListener('visibilitychange', () => H.schedule());
 function pageHome() {
   const cur = S.curation?.rails || RAILS.map(r => ({...r, enabled: true}));
   const mine = S.apps.filter(justAdded).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 1);
-  const heroList = [...mine, ...(S.curation?.hero || []).map(byId).filter(Boolean).filter(a => !mine.includes(a))].slice(0, 7);
+  const heroList = [...mine, ...(S.curation?.hero || []).map(byId).filter(Boolean).filter(a => !mine.includes(a))].slice(0, 8);
   if (!heroList.length) heroList.push(...S.apps.slice(0, 5));
   const rails = [];
   for (const r of cur) {
     if (!r.enabled) continue;
-    if (r.key === 'continue') rails.push(rail({id: 'rail-continue', title: r.title, items: recentApps(), foot: a => `Opened ${ago(S.history.find(h => h.id === a.id).at)}`}));
+    if (r.key === 'continue') rails.push(rail({id: 'rail-continue', title: r.title, items: recentApps(), foot: a => `Viewed ${ago(S.history.find(h => h.id === a.id).at)}`}));
     if (r.key === 'top') rails.push(rail({id: 'rail-top', title: r.title, items: topApps(), top: true}));
     if (r.key === 'new') rails.push(rail({id: 'rail-new', title: r.title, items: newApps()}));
     if (r.key === 'originals') rails.push(rail({id: 'rail-originals', title: r.title, items: S.apps.filter(a => a.original), shape: 'tall'}));
     if (r.key === 'hubs') rails.push(hubRail(r.title));
     if (r.key === 'because') { const seed = recentApps()[0]; if (seed) rails.push(rail({id: 'rail-because', title: `${r.title} ${seed.title}`, items: similar(seed)})); }
-    if (r.key === 'mylist') rails.push(rail({id: 'rail-mylist', title: r.title, items: S.apps.filter(a => saved(a.id)), href: '#my-stuff'}));
+    if (r.key === 'mylist') rails.push(`<div id="mylist-slot" data-title="${esc(r.title)}">${rail({id: 'rail-mylist', title: r.title, items: S.apps.filter(a => saved(a.id)), href: '#my-stuff'})}</div>`);
     if (r.key === 'domains') for (const d of DOMAINS) { const items = S.apps.filter(a => a.domain === d); if (items.length >= 2) rails.push(rail({id: `rail-d-${d.toLowerCase()}`, title: THEMES[d].label, sub: d, items, href: `#hub/${d}`})); }
   }
   return {
@@ -170,31 +183,64 @@ function pageHome() {
   };
 }
 
-function pageTitle(id) {
-  const a = byId(id);
-  if (!a) return pageMissing('That app is not in the catalog.', 'It may be a draft, archived, or removed.');
-  if (a.status === 'published') call('POST', 'me/history', {id: a.id}).then(h => { S.history = h; }).catch(() => {});
+async function pageTitle(id) {
+  let a;
+  try { a = toApp(await call('GET', `apps/${encodeURIComponent(id || '')}`)); }
+  catch (error) { if (error.status === 404) return pageMissing('That app is not in the catalog.', 'It may be a draft, archived, or removed.'); throw error; }
   const f = formation(a), sourceText = {app: 'Key graph published by the app itself at its last capture', metadata: 'Key graph from the app’s catalog entry', generated: 'Placeholder pattern: this app has not published a key graph yet'}[f.source];
-  const shot = a.screenshot?.path ? `<figure class="shot"><img src="${esc(a.screenshot.path)}" alt="${esc(a.title)} screenshot"></figure>` : `<div class="empty-shot">No screenshot yet. The capture worker adds one after the app’s next deploy${a.capture ? ` (requested ${ago(a.capture.requestedAt)})` : ''}.</div>`;
+  const shot = screenMarkup(a);
   const facts = [['What it does', a.summary], ['Built for', a.audience || 'Not specified'], ['Owner', `${a.owner || '—'}${a.ownerName ? ` · ${a.ownerName}` : ''}`], ['Domain', a.domain], ['Published', fmt(a.publishedAt) || '—'], ['Updated', fmt(a.updatedAt) || '—']];
   return {
     title: `${a.title} · Dreamcatcher`, hero: true,
     html: `<article><section class="title-hero"><div class="hero-art" id="title-art"></div><div class="hero-shade"></div><div class="hero-copy">${kicker(a)}${titleArt(a, 'h1')}${meta(a)}<p class="logline">${esc(a.logline)}</p>` +
-      `<div class="actions"><button class="btn btn-play" type="button" data-open="${a.id}">${ICON.play}Open app</button>${saveBtn(a)}<button class="btn btn-ghost" type="button" data-share="${a.id}">Copy link</button>${canEdit(a) ? `<a class="btn btn-ghost" href="#studio/edit/${a.id}">Edit</a>` : ''}</div>${a.status !== 'published' ? `<p>${status(a.status)} Only you and site admins can see this.</p>` : ''}</div></section>` +
+      `<div class="actions">${launchBtn(a)}${saveBtn(a)}<button class="btn btn-ghost" type="button" data-share="${a.id}">Copy link</button>${canEdit(a) ? `<a class="btn btn-ghost" href="#studio/edit/${a.id}">Edit</a>` : ''}</div>${a.status !== 'published' ? `<p>${status(a.status)} Only you and site admins can see this.</p>` : ''}</div></section>` +
       `<nav class="tabs" aria-label="Sections"><button type="button" data-section="s-overview" class="on">Overview</button><button type="button" data-section="s-graph">The graph</button><button type="button" data-section="s-screens">Screens</button><button type="button" data-section="s-more">More like this</button></nav>` +
       `<section class="page-section" id="s-overview"><h2>Overview</h2><p class="summary">${esc(a.description && a.descriptionApproved ? a.description : a.summary)}</p><dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${a.tags.length ? `<div class="tags">${a.tags.map(t => `<a href="#search/${encodeURIComponent(t)}">${esc(t)}</a>`).join('')}</div>` : ''}</section>` +
       `<section class="page-section" id="s-graph"><h2>The graph behind the art</h2><div class="graph-pair"><figure><div class="frame">${plainChartSvg(a)}</div><figcaption><b>${esc(f.label || `${f.type} chart`)}</b>, drawn plainly</figcaption></figure><figure><div class="frame"><img src="${art(a, 'wide')}" alt=""></div><figcaption><b>The same graph as a constellation</b>, used for this app’s tiles and hero</figcaption></figure></div><span class="source-chip">${esc(sourceText)}</span></section>` +
       `<section class="page-section" id="s-screens"><h2>Screens</h2>${shot}</section>` +
       `<section class="page-section page-section--rail" id="s-more">${rail({id: 'rail-more', title: 'More like this', items: similar(a)})}</section></article>`,
     after: () => {
+      S.byId.set(a.id, a); // Only cache authorized detail records after the route commits.
+      if (a.status === 'published') call('POST', 'me/history', {id: a.id}).then(h => { S.history = h; }).catch(() => {});
       const from = S.from?.id === a.id ? S.from : null; S.from = null;
       sky.show(f, {target: () => $('#title-art'), color: accent(a), from: from || undefined, duration: from ? 1300 : 1500});
       const tabs = $$('.tabs button'), spy = new IntersectionObserver(es => {   // keep the tab underline on the section in view
         for (const e of es) if (e.isIntersecting) tabs.forEach(t => t.classList.toggle('on', t.dataset.section === e.target.id));
       }, {rootMargin: '-140px 0px -55% 0px'});
+      pageCleanups.push(() => spy.disconnect());
       tabs.forEach(t => { const el = $(`#${t.dataset.section}`); if (el) spy.observe(el); });
     }
   };
+}
+
+function screenshotLabel(a) {
+  if (a.screenshot && !a.capture) return 'App screenshot ready.';
+  if (a.capture?.status === 'succeeded' && !a.screenshot) return 'No current screenshot. Request a fresh capture.';
+  return captureMessage(a.capture);
+}
+function screenMarkup(a) {
+  return `<p data-capture-status="${a.id}" data-status="${a.capture?.status || ''}">${esc(screenshotLabel(a))}</p>` +
+    (a.screenshot?.path ? `<figure class="shot"><img src="${esc(a.screenshot.path)}" alt="${esc(a.title)} screenshot"></figure>` : '');
+}
+function wireCaptureStatus() {
+  if (S.api.mode !== 'server') return;
+  let stopped = false, timer;
+  async function poll() {
+    if (stopped) return;
+    const ids = [...new Set($$('[data-capture-status]').filter(el => ['queued', 'running'].includes(el.dataset.status)).map(el => el.dataset.captureStatus))];
+    if (!ids.length) return;
+    await Promise.all(ids.map(async id => {
+      try {
+        const a = toApp(await call('GET', `apps/${id}`)); if (stopped) return;
+        S.byId.set(id, a); S.apps = S.apps.map(app => app.id === id ? a : app);
+        $$('[data-capture-status]').filter(el => el.dataset.captureStatus === id).forEach(el => { el.textContent = screenshotLabel(a); el.dataset.status = a.capture?.status || ''; });
+        if (parse().name === 'app' && parse().rest[0] === id && $('#s-screens')) $('#s-screens').innerHTML = `<h2>Screens</h2>${screenMarkup(a)}`;
+      } catch { /* Keep the last status and allow navigation; a later poll retries. */ }
+    }));
+    if (!stopped) timer = setTimeout(poll, 2000);
+  }
+  timer = setTimeout(poll, 2000);
+  pageCleanups.push(() => { stopped = true; clearTimeout(timer); });
 }
 
 function pageHub(name) {
@@ -223,12 +269,29 @@ function renderResults(q) {
   box.innerHTML = hits.length ? `<p class="search-meta">${hits.length} ${hits.length === 1 ? 'app' : 'apps'} for “${esc(q)}”</p><ol class="grid">${hits.map(a => tile(a)).join('')}</ol>` : `<div class="empty"><h2>Nothing matches “${esc(q)}”.</h2><p>Try an app name, a team, or what you’re trying to do.</p></div>`;
 }
 
+function myListBody(list) {
+  return list.length ? `<ol class="grid">${list.map(a => tile(a)).join('')}</ol>` : '<div class="empty"><h2>Your list is empty.</h2><p>Use + on any app to keep it here.</p><a class="btn btn-play" href="#home">Browse apps</a></div>';
+}
+function syncMyList() {
+  const list = S.apps.filter(a => saved(a.id)), slot = $('#mylist-slot'), body = $('#my-list-results');
+  const focused = document.activeElement, affected = (body?.contains(focused) || slot?.contains(focused));
+  const oldId = focused?.closest?.('.tile')?.dataset.id;
+  const nextId = focused?.closest?.('.tile')?.nextElementSibling?.dataset.id;
+  if (slot) { slot.innerHTML = rail({id: 'rail-mylist', title: slot.dataset.title, items: list, href: '#my-stuff'}); wireRails(slot); }
+  if (body) body.innerHTML = myListBody(list);
+  const count = $('#my-list-count'); if (count) count.textContent = list.length;
+  if (affected) {
+    const container = body || slot;
+    const target = container.querySelector(`[data-save="${oldId}"]`) || (nextId && container.querySelector(`[data-save="${nextId}"]`)) || container.querySelector('button:not([disabled]),a') || $('#main');
+    target.focus({preventScroll: true});
+  }
+}
 function pageMyStuff(tab = 'list') {
   const list = S.apps.filter(a => saved(a.id)), recent = recentApps();
   const body = tab === 'recent'
-    ? (recent.length ? `<ol class="grid">${recent.map(a => tile(a, {foot: `Opened ${ago(S.history.find(h => h.id === a.id).at)}`})).join('')}</ol><p class="search-meta"><button class="link-button" type="button" data-act="clear-history">Clear history</button></p>` : `<div class="empty"><h2>Nothing opened yet.</h2><p>Apps you open show up here.</p></div>`)
-    : (list.length ? `<ol class="grid">${list.map(a => tile(a)).join('')}</ol>` : `<div class="empty"><h2>Your list is empty.</h2><p>Use + on any app to keep it here.</p><a class="btn btn-play" href="#home">Browse apps</a></div>`);
-  return {title: 'My Stuff · Dreamcatcher', html: `<div class="page"><header class="page-head"><h1 class="title-art title-art--condensed">My Stuff</h1></header><nav class="segmented" aria-label="My Stuff"><a href="#my-stuff/list" class="${tab !== 'recent' ? 'on' : ''}">My List · ${list.length}</a><a href="#my-stuff/recent" class="${tab === 'recent' ? 'on' : ''}">Continue exploring · ${recent.length}</a></nav>${body}</div>`, after: () => sky.clear()};
+    ? (recent.length ? `<ol class="grid">${recent.map(a => tile(a, {foot: `Viewed ${ago(S.history.find(h => h.id === a.id).at)}`})).join('')}</ol><p class="search-meta"><button class="link-button" type="button" data-act="clear-history">Clear history</button></p>` : `<div class="empty"><h2>Nothing viewed yet.</h2><p>App pages you view show up here.</p></div>`)
+    : `<div id="my-list-results">${myListBody(list)}</div>`;
+  return {title: 'My Stuff · Dreamcatcher', html: `<div class="page"><header class="page-head"><h1 class="title-art title-art--condensed">My Stuff</h1></header><nav class="segmented" aria-label="My Stuff"><a href="#my-stuff/list" class="${tab !== 'recent' ? 'on' : ''}">My List · <span id="my-list-count">${list.length}</span></a><a href="#my-stuff/recent" class="${tab === 'recent' ? 'on' : ''}">Continue exploring · ${recent.length}</a></nav>${body}</div>`, after: () => sky.clear()};
 }
 
 function pageMissing(h, p) { return {title: 'Not found · Dreamcatcher', html: `<div class="page"><div class="empty"><h2>${esc(h)}</h2><p>${esc(p)}</p><a class="btn btn-play" href="#home">Back to home</a></div></div>`, after: () => sky.clear()}; }
@@ -251,7 +314,7 @@ async function pageStudio(sub, id) {
   };
 }
 function adminRow(a, {admin = false} = {}) {
-  const cap = a.capture ? `Screenshot ${a.capture.status}` : a.screenshot ? 'Screenshot ready' : 'No screenshot';
+  const cap = `<span data-capture-status="${a.id}" data-status="${a.capture?.status || ''}">${esc(screenshotLabel(a))}</span>`;
   const pub = a.status === 'published' ? `<button class="btn-sm" type="button" data-act="status" data-id="${a.id}" data-to="draft">Unpublish</button>` : `<button class="btn-sm" type="button" data-act="status" data-id="${a.id}" data-to="published">Publish</button>`;
   return `<li class="row" data-row="${a.id}"><img class="row-art" src="${art(a)}" alt=""><div class="row-main"><a class="row-title" href="#app/${a.id}">${esc(a.title)}</a><p class="row-meta">${status(a.status)} ${esc(a.domain)} · updated ${fmt(a.updatedAt) || '—'} · ${cap}${admin ? ` · ${esc(a.ownerName)}` : ''}</p></div>` +
     `<div class="row-actions"><a class="btn-sm" href="#studio/edit/${a.id}">Edit</a>${pub}${a.status !== 'archived' ? `<button class="btn-sm" type="button" data-act="status" data-id="${a.id}" data-to="archived">Archive</button>` : ''}<button class="btn-sm" type="button" data-act="capture" data-id="${a.id}">Request screenshot</button><button class="btn-sm btn-danger" type="button" data-act="delete" data-id="${a.id}">Delete</button></div></li>`;
@@ -297,6 +360,7 @@ async function pageEditor(id) {
     html: `<div class="page admin"><header class="page-head"><p class="kicker"><a href="#studio">Your apps</a> ›</p><h1 class="title-art title-art--condensed">${a ? esc(a.title) : 'New app'}</h1></header>` +
       `<div class="create"><form id="app-form" novalidate>` +
       `<label class="field">App name<input name="title" required maxlength="60" value="${v('title', 'Launch weather')}"></label>` +
+      `<label class="field">Launch URL <small>HTTPS app address; leave blank until deployed. Opens in a new tab.</small><input name="launchUrl" type="url" maxlength="2048" placeholder="https://apps.example.com/your-app" value="${v('launchUrl')}"></label>` +
       `<div class="row-2"><label class="field">Domain<select name="domain">${domainOpts}</select></label><label class="field">Owning team<input name="owner" maxlength="100" value="${v('owner', S.me.team || '')}"></label></div>` +
       `<div class="row-2"><label class="field">What does it do?<input name="task" maxlength="120" value="${v('task', 'Check')}" placeholder="Track, Compare, Trace…"></label><label class="field">About what?<input name="subject" maxlength="180" value="${v('subject', 'wind, lightning and range weather before a launch window')}"></label></div>` +
       `<label class="field">Who is it for?<input name="audience" maxlength="100" value="${v('audience', 'launch teams')}"></label>` +
@@ -316,7 +380,7 @@ async function pageEditor(id) {
       const form = $('#app-form'); let t = 0;
       const read = () => {
         const fd = new FormData(form), title = String(fd.get('title') || '').trim();
-        const out = {id: a?.id || slug(title), title, domain: fd.get('domain'), owner: fd.get('owner'), task: fd.get('task'), subject: fd.get('subject'), audience: fd.get('audience'), logline: fd.get('logline'),
+        const out = {id: a?.id || slug(title), title, launchUrl: fd.get('launchUrl'), domain: fd.get('domain'), owner: fd.get('owner'), task: fd.get('task'), subject: fd.get('subject'), audience: fd.get('audience'), logline: fd.get('logline'),
           description: fd.get('description'), descriptionApproved: fd.get('descriptionApproved') === 'on', tags: String(fd.get('tags') || '').split(',').map(x => x.trim()).filter(Boolean),
           keyVisual: textToKv(fd.get('kvType'), String(fd.get('kvText') || ''), String(fd.get('kvLabel') || '').trim()), publishedAt: a?.publishedAt || '', original: isAdmin() ? fd.get('original') === 'on' : a?.original};
         if (isAdmin()) out.featured = fd.get('featured') === 'on';
@@ -368,7 +432,7 @@ async function pageAdmin(tab = 'apps') {
       all.map(a => `<tr data-row="${a.id}" data-status="${a.status}" data-text="${esc(`${a.title} ${a.ownerName} ${a.owner} ${a.domain}`.toLowerCase())}"><td><div class="cell-app"><img src="${art(a)}" alt=""><div><a href="#app/${a.id}">${esc(a.title)}</a><small>${esc(a.domain)} · updated ${fmt(a.updatedAt) || '—'}</small></div></div></td><td>${esc(a.ownerName)}<small>${esc(a.owner)}</small></td>` +
         `<td><select data-act="set-status" data-id="${a.id}" aria-label="Status of ${esc(a.title)}">${STATUSES.map(s => `<option ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>` +
         `<td><input type="checkbox" data-act="set-flag" data-flag="featured" data-id="${a.id}" ${a.featured ? 'checked' : ''} ${a.status !== 'published' ? 'disabled' : ''} aria-label="Feature ${esc(a.title)} in the hero"></td><td><input type="checkbox" data-act="set-flag" data-flag="original" data-id="${a.id}" ${a.original ? 'checked' : ''} aria-label="Mark ${esc(a.title)} as an Original"></td>` +
-        `<td>${a.rank ? `#${a.rank}` : '—'}</td><td>${a.capture ? esc(a.capture.status) : a.screenshot ? 'Ready' : 'None'} <button class="btn-sm" type="button" data-act="capture" data-id="${a.id}">Request</button></td>` +
+        `<td>${a.rank ? `#${a.rank}` : '—'}</td><td><span data-capture-status="${a.id}" data-status="${a.capture?.status || ''}">${esc(screenshotLabel(a))}</span> <button class="btn-sm" type="button" data-act="capture" data-id="${a.id}">Request</button></td>` +
         `<td class="nowrap"><a class="btn-sm" href="#studio/edit/${a.id}">Edit</a><button class="btn-sm btn-danger" type="button" data-act="delete" data-id="${a.id}">Delete</button></td></tr>`).join('') + `</tbody></table></div>`;
     after = () => {
       let f = 'all'; const apply = () => { const q = $('#admin-q').value.toLowerCase(); $$('tr[data-row]').forEach(r => { r.hidden = !((f === 'all' || r.dataset.status === f) && r.dataset.text.includes(q)); }); };
@@ -415,31 +479,35 @@ async function pageAdmin(tab = 'apps') {
 function parse() { const h = (location.hash || '#home').slice(1), [name, ...rest] = h.split('/'); return {name: name || 'home', rest: rest.map(x => { try { return decodeURIComponent(x); } catch { return x; } })}; }
 let renderSeq = 0;
 async function render(opening = false) {
-  const seq = ++renderSeq, {name, rest} = parse(); closeBrowse(); closeMenu(); clearTimeout(H.timer); H.el = null;
+  const seq = ++renderSeq, {name, rest} = parse(); closeBrowse(); closeMenu(); H.unmount();
+  pageCleanups.splice(0).forEach(dispose => dispose());
   let page;
   try {
-    page = name === 'home' ? pageHome() : name === 'app' ? pageTitle(rest[0]) : name === 'hub' ? pageHub(rest[0]) : name === 'search' ? pageSearch(rest[0] || '') :
+    page = name === 'home' ? pageHome() : name === 'app' ? await pageTitle(rest[0]) : name === 'hub' ? pageHub(rest[0]) : name === 'search' ? pageSearch(rest[0] || '') :
       name === 'my-stuff' ? pageMyStuff(rest[0]) : name === 'studio' ? await pageStudio(rest[0], rest[1]) : name === 'admin' ? await pageAdmin(rest[0] || 'apps') : name === 'create' ? await pageStudio('new') : pageMissing('That page doesn’t exist.', '');
   } catch (err) { page = pageMissing('Something went wrong loading this page.', err.message); }
   if (seq !== renderSeq) return;
   const main = $('#main'); main.innerHTML = page.html; document.title = page.title;
   $('#topbar').classList.toggle('over-hero', !!page.hero); onScroll();
   if (!opening) window.scrollTo({top: 0, behavior: 'instant'});
-  wireRails(main); page.after?.(opening);
+  wireRails(main); page.after?.(opening); wireCaptureStatus();
   if (!opening && S.booted) main.focus({preventScroll: true});
   $$('.browse nav a').forEach(a => a.toggleAttribute('aria-current', a.getAttribute('href') === `#${name}` && !a.dataset.jump));
 }
 addEventListener('hashchange', () => render());
 
 // ── rails, tiles and hover preview ───────────────────────────────────────────
+const wiredRails = new WeakSet();
+addEventListener('resize', () => $$('.rail-view').forEach(view => view.dispatchEvent(new Event('railresize'))));
 function wireRails(root) {
   $$('.rail-view', root).forEach(view => {
+    if (wiredRails.has(view)) return; wiredRails.add(view);
     const track = $('.track', view), prev = $('.arrow.prev', view), next = $('.arrow.next', view), pager = view.parentElement.querySelector('.pager');
     const update = () => {
       const max = track.scrollWidth - track.clientWidth - 2; prev.disabled = track.scrollLeft <= 2; next.disabled = track.scrollLeft >= max;
       if (pager) { const pages = Math.max(1, Math.ceil(track.scrollWidth / track.clientWidth)), at = max > 0 ? Math.round(track.scrollLeft / max * (pages - 1)) : 0; pager.innerHTML = pages > 1 ? Array.from({length: pages}, (_, i) => `<i class="${i === at ? 'on' : ''}"></i>`).join('') : ''; }
     };
-    track.addEventListener('scroll', () => requestAnimationFrame(update), {passive: true}); update(); addEventListener('resize', update);
+    track.addEventListener('scroll', () => requestAnimationFrame(() => { if (track.isConnected) update(); }), {passive: true}); update(); view.addEventListener('railresize', update);
     view.addEventListener('click', e => { const b = e.target.closest('.arrow'); if (!b) return; const first = track.querySelector('li'); const step = track.clientWidth - (first ? first.getBoundingClientRect().width : 0); track.scrollBy({left: Number(b.dataset.dir) * Math.max(step, 200), behavior: reduced() ? 'instant' : 'smooth'}); });
     track.addEventListener('pointerover', e => { const li = e.target.closest('.tile'); if (!li) return; const r = li.getBoundingClientRect(), t = track.getBoundingClientRect(), gut = parseFloat(getComputedStyle(track).paddingLeft); li.querySelector('.tile-art')?.style.setProperty('--origin', r.left < t.left + gut + 8 ? 'left center' : r.right > t.right - gut - 8 ? 'right center' : 'center'); });
     track.addEventListener('keydown', e => {
@@ -449,14 +517,11 @@ function wireRails(root) {
   });
 }
 function wireHoverPreview() {
-  const rails = $('#home-rails'); if (!rails) return; let t = 0, leave = 0;
-  rails.addEventListener('pointerover', e => {
-    const link = e.target.closest('.tile-link'); if (!link || e.pointerType !== 'mouse') return;
-    clearTimeout(leave); clearTimeout(t);
-    t = setTimeout(() => { if (H.visible && $('#hero')) { const a = byId(link.dataset.tile); if (a) H.startPreview(a); } }, 600);
-  });
-  rails.addEventListener('pointerleave', () => { clearTimeout(t); leave = setTimeout(() => H.endPreview(), 1500); });
-  rails.addEventListener('pointerout', e => { if (!e.relatedTarget?.closest?.('.tile-link')) clearTimeout(t); });
+  const rails = $('#home-rails'); if (!rails) return;
+  pageCleanups.push(wireCardPreview(rails, {
+    show: id => { const a = byId(id); if (a && H.visible && $('#hero')) H.startPreview(a); },
+    hide: () => H.endPreview()
+  }));
 }
 // remember where a tile's stars were, so they can fly into the title page
 document.addEventListener('click', e => {
@@ -466,29 +531,38 @@ document.addEventListener('click', e => {
   else S.from = null;
 }, true);
 
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (!img.matches?.('img[data-fallback]')) return;
+  const fallback = img.dataset.fallback; delete img.dataset.fallback; img.src = fallback; img.alt = '';
+  const tile = img.closest('.tile-art'); tile?.classList.remove('tile-art--screenshot');
+  const label = tile?.querySelector('.meta-line'); if (label) label.textContent = label.textContent.replace('App screenshot', 'Screenshot unavailable');
+}, true);
+
 // ── actions ──────────────────────────────────────────────────────────────────
+const pendingSaves = new Set();
 let toastT = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3200); }
 async function toggleSave(id) {
-  const a = byId(id); if (!a) return; const add = !saved(id);
-  try { const list = await call(add ? 'PUT' : 'DELETE', `me/list/${id}`); S.list = new Set(list); } catch (e) { toast(e.message); return; }
+  const a = byId(id); if (!a || pendingSaves.has(id)) return; const add = !saved(id);
+  pendingSaves.add(id);
+  try { const list = await call(add ? 'PUT' : 'DELETE', `me/list/${id}`); S.list = new Set(list); } catch (e) { toast(e.message); return; } finally { pendingSaves.delete(id); }
   $$(`[data-save="${id}"]`).forEach(b => { b.setAttribute('aria-pressed', String(add)); b.setAttribute('aria-label', `${add ? 'Remove from' : 'Add to'} My List: ${a.title}`); b.textContent = add ? '✓' : '+'; });
-  paintChrome(); toast(add ? `Added ${a.title} to My List` : `Removed ${a.title} from My List`);
+  paintChrome(); syncMyList(); toast(add ? `Added ${a.title} to My List` : `Removed ${a.title} from My List`);
 }
 const pendingDelete = new Map();
 document.addEventListener('click', async e => {
   const b = e.target.closest('button,a'); if (!b) return;
   if (b.dataset.save) { e.preventDefault(); return toggleSave(b.dataset.save); }
-  if (b.dataset.open) return toast('Opening an app connects to your app registry. It isn’t connected in this prototype.');
   if (b.dataset.share) { const url = `${location.href.split('#')[0]}#app/${b.dataset.share}`; try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { toast(url); } return; }
-  if (b.dataset.hero) { if (b.dataset.hero === 'pause') H.togglePause(); else { H.paused = false; H.go(H.i + (b.dataset.hero === 'next' ? 1 : -1)); } return; }
+  if (b.dataset.hero) { if (b.dataset.hero === 'pause') H.togglePause(); else { H.paused = false; H.syncPause(); H.go(H.i + (b.dataset.hero === 'next' ? 1 : -1)); } return; }
   if (b.dataset.pip) { H.go(Number(b.dataset.pip)); return; }
   if (b.dataset.section) { $$('.tabs button').forEach(x => x.classList.toggle('on', x === b)); $(`#${b.dataset.section}`)?.scrollIntoView({behavior: reduced() ? 'instant' : 'smooth', block: 'start'}); return; }
   if (b.dataset.jump) { e.preventDefault(); const target = b.dataset.jump; if (parse().name !== 'home') { location.hash = '#home'; await wait(80); } closeBrowse(); $(`#${target}`)?.scrollIntoView({behavior: reduced() ? 'instant' : 'smooth', block: 'center'}); return; }
   const act = b.dataset.act; if (!act) return;
   try {
     if (act === 'status') { await call('PATCH', `apps/${b.dataset.id}`, {status: b.dataset.to}); await refresh(); toast(`Moved to ${b.dataset.to}`); render(); }
-    if (act === 'capture') { await call('POST', `apps/${b.dataset.id}/capture`); toast('Screenshot requested. The capture worker picks it up after the next deploy.'); render(); }
+    if (act === 'capture') { await call('POST', `apps/${b.dataset.id}/capture`); toast('Screenshot requested. Status updates here while the worker runs.'); render(); }
     if (act === 'delete') {
       if (!pendingDelete.has(b)) { pendingDelete.set(b, b.textContent); b.textContent = 'Confirm delete'; b.classList.add('is-armed'); setTimeout(() => { if (pendingDelete.has(b)) { b.textContent = pendingDelete.get(b); b.classList.remove('is-armed'); pendingDelete.delete(b); } }, 4000); return; }
       pendingDelete.delete(b); await call('DELETE', `apps/${b.dataset.id}`); await refresh(); toast('App deleted'); if (b.dataset.back) location.hash = '#studio'; else render();
@@ -524,11 +598,12 @@ $('#browse-open').addEventListener('click', openBrowse); $('#browse-close').addE
 $('#browse').addEventListener('keydown', e => { if (e.key !== 'Tab') return; const f = $$('a:not([hidden]),button', $('#browse')); const i = f.indexOf(document.activeElement); if (e.shiftKey && i === 0) { e.preventDefault(); f.at(-1).focus(); } else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); } });
 $('#browse-domains').innerHTML = DOMAINS.map(d => `<a href="#hub/${d}"><span class="dot" style="background:${THEMES[d].accent}"></span>${d}</a>`).join('');
 async function openMenu() {
+  if (!S.api) return;
   const m = $('#profile-menu'), users = await S.api.users();
   m.innerHTML = `<div class="menu-head"><b>${esc(S.me.name)}</b><span>${esc(S.me.team || '')} · ${esc(S.me.role)}</span></div>` +
     `<a href="#my-stuff">My Stuff</a>${isCreator() ? '<a href="#studio">Your apps</a>' : ''}${isAdmin() ? '<a href="#admin">Site admin</a>' : ''}` +
-    `<p class="menu-group">Sign in as (sample users)</p>${users.map(u => `<button type="button" data-act="switch-user" data-id="${u.id}" ${u.id === S.me.id ? 'aria-current="true"' : ''}>${esc(u.name)} <small>${esc(u.role)}</small></button>`).join('')}` +
-    `<p class="menu-group">Data</p><p class="menu-note">${S.api.mode === 'server' ? 'Connected to the Dreamcatcher API.' : `Stored in this browser${S.api.persistent ? '' : ' for this visit only'}.`}</p><button type="button" data-act="reset-data">Restore sample data</button>`;
+    `${users.length ? '<p class="menu-group">Sign in as (sample users)</p>' : ''}${users.map(u => `<button type="button" data-act="switch-user" data-id="${u.id}" ${u.id === S.me.id ? 'aria-current="true"' : ''}>${esc(u.name)} <small>${esc(u.role)}</small></button>`).join('')}` +
+    `<p class="menu-group">Data</p><p class="menu-note">${S.api.mode === 'server' ? 'Connected to the Dreamcatcher API.' : `Stored in this browser${S.api.persistent ? '' : ' for this visit only'}.`}</p>${users.length ? '<button type="button" data-act="reset-data">Restore sample data</button>' : ''}`;
   m.hidden = false; $('#profile-btn').setAttribute('aria-expanded', 'true'); m.querySelector('a,button')?.focus();
 }
 function closeMenu() { const m = $('#profile-menu'); if (m.hidden) return; m.hidden = true; $('#profile-btn').setAttribute('aria-expanded', 'false'); }
@@ -541,7 +616,7 @@ addEventListener('keydown', e => {
 $('#about-open').addEventListener('click', () => {
   $('#about-body').innerHTML = `<div class="dialog-body"><button class="icon-link dialog-close" type="button" data-close-about aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button><h2>About this prototype</h2>` +
     `<p>Dreamcatcher browses apps the way a streaming service browses shows. A rotating hero, rails, Top 10, Originals and full title pages, with My List and Continue exploring.</p>` +
-    `<ul><li>Every tile and hero is drawn from the app’s own key graph, as a constellation. Change the graph and the art changes with it.</li><li>Hovering a tile previews it in the hero, the way HBO Max previews titles at the top of its home page.</li><li>Apps, owners, rankings and graphs here are sample data. Data is ${S.api.mode === 'server' ? 'served by the local Dreamcatcher API' : 'stored in this browser'}.</li></ul>` +
+    `<ul><li>Standard cards show approved app screenshots when available. Featured posters and the hero retain graph-derived constellation art.</li><li>Hovering a tile previews it in the hero, the way HBO Max previews titles at the top of its home page.</li><li>Apps, owners, rankings and graphs here are sample data. Data is ${S.api.mode === 'server' ? 'served by the local Dreamcatcher API' : 'stored in this browser'}.</li></ul>` +
     `<p>Design notes, the CRUD contract and the capture pipeline are in the repository’s <code>docs/</code> folder.</p></div>`;
   $('#about').showModal();
 });
@@ -555,8 +630,11 @@ async function intro() {
   const skip = () => { skipped = true; }; addEventListener('keydown', skip, {once: true}); box.addEventListener('pointerdown', skip, {once: true});
   body.classList.add('is-intro');
   const shown = sky.show(logoFormation(), {target: $('#intro-mark'), color: '#CE96FF', from: 'scatter', duration: 1700});
-  await Promise.race([shown, new Promise(r => { const t = setInterval(() => { if (skipped) { clearInterval(t); r(); } }, 50); })]);
+  let skipTimer;
+  try { await Promise.race([shown, new Promise(r => { skipTimer = setInterval(() => { if (skipped) r(); }, 50); })]); }
+  finally { clearInterval(skipTimer); }
   if (!skipped) { box.classList.add('show-word'); for (let i = 0; i < 18 && !skipped; i++) await wait(50); }
+  removeEventListener('keydown', skip); box.removeEventListener('pointerdown', skip);
   box.classList.add('is-out'); body.classList.remove('is-intro'); body.classList.add('reveal');
   setTimeout(() => { box.classList.remove('is-out', 'show-word'); body.classList.remove('reveal'); }, 1000);
 }
@@ -566,7 +644,9 @@ async function intro() {
 async function boot() {
   $('.skip')?.addEventListener('click', e => { e.preventDefault(); $('#main').focus(); });   // #main is not a route
   try {
-    S.api = await connect(); S.me = (await call('GET', 'session')).user; await refresh();
+    const configResponse = await fetch('runtime.json', {cache: 'no-store'});
+    if (!configResponse.ok) throw new Error('Catalog runtime configuration is missing.');
+    S.api = await connect(await configResponse.json()); S.me = (await call('GET', 'session')).user; await refresh();
   } catch (err) {
     document.body.classList.remove('is-booting');
     $('#main').innerHTML = err.status === 401 || err.status === 403 ? `<div class="page"><div class="empty"><h2>Sign in to see the catalog.</h2><p>${esc(err.message)}</p><button class="btn btn-play" type="button" onclick="location.reload()">I’ve signed in</button></div></div>` : `<div class="page"><div class="empty"><h2>The app catalog could not be loaded.</h2><p>${esc(err.message)}</p><button class="btn btn-play" type="button" onclick="location.reload()">Try again</button></div></div>`;
@@ -583,3 +663,4 @@ function registerTools() {
     execute(input) { const q = String(input?.query || '').slice(0, 200); location.hash = `#search/${encodeURIComponent(q)}`; return S.apps.filter(a => [a.title, a.summary, a.owner, ...a.tags].join(' ').toLowerCase().includes(q.toLowerCase())).map(a => ({id: a.id, title: a.title, summary: a.summary})); }})).catch(() => {}); } catch {}
 }
 boot();
+

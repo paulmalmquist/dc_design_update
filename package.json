@@ -13,6 +13,8 @@
     "generate": "node scripts/generate-catalog.mjs",
     "test": "node --test",
     "check": "node scripts/check.mjs",
-    "build": "npm run generate && npm run check"
+    "build": "npm run generate && npm run check",
+    "build:demo": "node scripts/generate-catalog.mjs --demo && npm run check"
   }
 }
+

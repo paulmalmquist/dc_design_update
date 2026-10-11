@@ -5,9 +5,9 @@ The gallery, **Your apps** (personal admin) and **Site admin** all talk to one s
 | Where | Storage | Identity |
 |---|---|---|
 | `npm start` (`scripts/serve.mjs`) | `data/db.json`, written atomically | Dev cookie with sample users (`DEV_AUTH`, on by default) |
-| Static hosting (no `/api`) | `localStorage` in the viewer's browser (`dist/lib/api.mjs`, `BrowserStore`) | Sample user picked in the profile menu |
+| Explicit static demo (`npm run build:demo`) | `localStorage` in the viewer's browser (`dist/lib/api.mjs`, `BrowserStore`) | Sample user picked in the profile menu |
 
-Production uses neither. The real Dreamcatcher database (on the work network) implements the same routes, and the front end switches to it automatically: on boot, `connect()` calls `GET api/session`. A JSON answer means "server mode". A JSON 401/403 shows a sign-in screen and never falls back to the local sandbox. Anything else (a static host with no API) uses the browser store.
+Production implements these routes against the real Dreamcatcher database and identity. `dist/runtime.json` explicitly selects `server` (default build) or `demo`. Server mode calls `GET api/session`; every authorization, HTTP, network, HTML or JSON failure remains an error. Only a deliberate demo build uses BrowserStore. The local dev server always serves server mode.
 
 ## Roles
 
@@ -27,6 +27,8 @@ The server decides. The UI hides controls by role, but every rule is enforced in
 |---|---|---|
 | `id` | slug, 2–64 chars | Immutable after create. Used in URLs and file names |
 | `title` | string ≤ 60 | |
+| `launchUrl` | optional HTTPS URL ≤ 2048 | No embedded credentials; opens in a new tab. Blank means launch is not configured |
+| `screenshot` | worker-owned capture metadata | App-specific JPG path, approved flag, capturedAt and expiresAt. Never writable via app edits |
 | `domain` | `Manufacturing` · `Data` · `Quality` · `Engineering` · `Finance` · `Platform` | Drives colour, title type and the fallback pattern |
 | `task`, `subject`, `audience`, `owner` | strings | Feed the generated description |
 | `description`, `descriptionApproved` | string, boolean | An owner-approved description is never overwritten |
@@ -40,7 +42,7 @@ The server decides. The UI hides controls by role, but every rule is enforced in
 | `ownerId` | user ID | Set from the session on create; never from the body |
 | `origin` | `seed` · `app` | `app` = created through the API (drives "Just added") |
 
-**keyVisual** (validated by `validateKeyVisual` in `dist/lib/constellation.mjs`; numbers only, so an app page can publish it safely)
+**keyVisual** (validated by `validateKeyVisual` in `dist/lib/constellation.mjs`; bounded numeric data; still requires audience and data-sensitivity review)
 
 | `type` | Data | Limits |
 |---|---|---|
@@ -54,7 +56,7 @@ The server decides. The UI hides controls by role, but every rule is enforced in
 
 Every type takes an optional `label` (≤ 80 chars; control characters and `<>` removed). Invalid graphs are rejected with a readable 400 on write, and a corrupt stored graph falls back to the domain pattern instead of breaking the page.
 
-**User** `{id, name, team, role, prefs: {intro: boolean}}` · **My List** ordered app IDs per user · **History** `[{id, at}]` per user, newest first, 30 max · **Capture request** `{status: 'queued', requestedAt, requestedBy}` per app · **Curation** `{hero: appId[] (≤ 8, published only), rails: [{key, title, enabled}]}` · **Audit entry** `{at, userId, userName, action, target, summary}`, newest first, 500 kept.
+**User** `{id, name, team, role, prefs: {intro: boolean}}` · **My List** ordered app IDs per user · **History** `[{id, at}]` per user, newest first, 30 max · **Capture request** `{status, requestedAt, requestedBy, startedAt?, finishedAt?}` per app; status is queued/running/succeeded/failed/not_configured · **Curation** `{hero: appId[] (≤ 8, published only), rails: [{key, title, enabled}]}` · **Audit entry** `{at, userId, userName, action, target, summary}`, newest first, 500 kept.
 
 ## Routes
 
@@ -70,7 +72,7 @@ All paths are relative to `api/`. Bodies are JSON (`content-type: application/js
 | `GET apps/:id` | all* | One app. *Drafts and archived apps are 404 unless you own them or are admin |
 | `PATCH apps/:id` | owner, admin | Partial update, including `status`. Unpublishing removes it from the hero |
 | `DELETE apps/:id` | owner, admin | Also removes it from the hero, every My List and every history |
-| `POST apps/:id/capture` | owner, admin | Queue a new screenshot (the capture worker picks it up) |
+| `POST apps/:id/capture` | owner, admin | Queue idempotently while queued/running. Local configured server consumes it; browser demo refuses capture |
 | `GET curation` | all | Hero order and rail settings |
 | `PUT curation` | admin | `{hero?, top?, rails?}`. `top` (≤ 10 IDs) rewrites every app's `rank` |
 | `GET users` | admin | Users with an `apps` count |
@@ -80,7 +82,7 @@ All paths are relative to `api/`. Bodies are JSON (`content-type: application/js
 | `GET me/history` · `POST me/history {id}` · `DELETE me/history` | self | Continue exploring |
 | `GET audit` | admin | Latest 200 entries |
 
-Every write is audited with who, what and a short summary ("Changed logline, keyVisual").
+App, capture-request, curation and role mutations are audited with who, what and a short summary ("Changed logline, keyVisual").
 
 ## Connecting the real database
 
@@ -93,7 +95,9 @@ Either way:
 
 - **Identity comes from your sign-in system**, never from the request body or a cookie the browser can set. `scripts/serve.mjs` shows the shape: with `DEV_AUTH=0` the dev cookie is ignored, and the user is read only from a header your sign-in proxy sets (`TRUSTED_USER_HEADER`, for example `x-forwarded-user`). No header means 401.
 - **Keep `ownerId` and the editorial fields server-controlled**, as `writeApp` does.
-- **Keep the 404 for drafts you can't see** rather than a 403, so drafts don't leak by ID.
+- **Keep the 404 for drafts you can't see** rather than a 403, including history writes; filter hidden IDs from all list/history responses.
+- Detail routes fetch `GET apps/:id` independently; never add private drafts to the public catalog just to make owner links work.
 - **Serve published apps to the gallery only.** `dist/catalog.json` is the public, published-only export the build writes for static hosting.
 - Map `status` onto any existing publication flag rather than adding a parallel one.
 - If the database already has app owners or teams, map them to `ownerId` and `owner` instead of creating a second user table.
+

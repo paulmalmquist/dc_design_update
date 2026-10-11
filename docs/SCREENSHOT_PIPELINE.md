@@ -2,10 +2,10 @@
 
 The capture worker visits each app's real UI and brings back two things:
 
-1. **A screenshot.** Shown on the app's title page under Screens. It is always a real browser capture, never a generated image.
+1. **A screenshot.** Shown on standard landscape cards and the app's title page under Screens. It is always a real browser capture, never a generated image.
 2. **The app's key graph**, if the page publishes one. This is what tiles and the hero are drawn from (see [DESIGN_BEHAVIOR.md](DESIGN_BEHAVIOR.md)). When an app's main chart changes, its constellation changes on the next capture.
 
-Tiles are no longer screenshots. A constellation reads well at tile size, every app has one from the moment it's created, and it can't leak data, because only the chart's numbers are published, never the page around them.
+Portrait collections and the hero retain constellation art; landscape cards prefer a fresh approved screenshot. A constellation is an honest fallback, not a screenshot. Numeric graph data can still be sensitive: audience permissions and safe-preview review apply to graphs as well as images.
 
 ## Publish the key graph from the app
 
@@ -29,7 +29,7 @@ npx --prefix capture playwright install chromium
 cp capture/config.example.json capture/config.json
 ```
 
-`capture/config.json` is ignored. Replace the example hostname with approved actual origins and add each app's safe preview route. App IDs must match `data/apps.json`. The optional `authStateEnv` names an environment variable containing a **path** to an approved Playwright storage-state file. Never place cookies, tokens or credentials in metadata or source control.
+`capture/config.json` is ignored. Replace the example hostname with approved actual origins and add each app's safe preview route. For standalone CLI captures, app IDs must match `data/apps.json`. The local queue supplies IDs from the live JSON database, so editor-created apps also work after an operator adds their approved route to the capture configuration. The optional `authStateEnv` names an environment variable containing a **path** to an approved Playwright storage-state file. Never place cookies, tokens or credentials in metadata or source control.
 
 Provide each app a thumbnail route that uses approved sample or redacted content and emits the ready marker **after** meaningful UI and data have rendered:
 
@@ -40,6 +40,18 @@ Provide each app a thumbnail route that uses approved sample or redacted content
 ```
 
 The `safePreview: true` configuration is an owner assertion, not automatic proof of redaction. The route should be safe to show to every authorized member of the catalog audience. Mask selectors are a secondary precaution; they do not replace scoped data access. Use the application's real UI components so captures are representative.
+
+## Local queue and live status
+
+After installing Chromium and configuring approved routes, start with:
+
+```sh
+CAPTURE_CONFIG=capture/config.json npm start
+```
+
+The server serializes API and queue database writes. Creating/updating a published app requests a capture; owners/admins can also use Request screenshot. `capture/queue.mjs` consumes requests and persists `queued`, `running`, `succeeded`, `failed` or `not_configured`. It retries interrupted running jobs on startup; duplicate queued/running requests do not start duplicate captures. The UI polls pending status every two seconds while its page is mounted. Missing operator configuration is not reported as success. Explicit browser-only demo builds cannot run the worker.
+
+This is a single-process reference adapter, not a multi-runner production queue. Use your existing private job infrastructure for production. A stale worker lock must be investigated, not automatically deleted.
 
 ## Run and wire into app publication
 
@@ -60,11 +72,10 @@ Do not allow end users to provide arbitrary URLs to a screenshot service. This C
 
 The worker uses a 1440 × 810 dark-mode, reduced-motion browser viewport and JPEG quality 84. It waits for the app marker, fonts, and image decodes; refuses error responses, password forms and app-specific error selectors; masks configured sensitive regions; freezes animations and the caret; then atomically writes a content-hashed JPEG and a capture manifest.
 
-A successful record contains app ID, image path, timestamp, revision, dimensions, capture source, approval flag and, when the page published one, the validated `keyVisual`. Internal URLs and credentials are not copied into the published catalog. For the title page's Screens section, the build and the dev server select:
+A successful record contains app ID, image path, timestamp, revision, dimensions, capture source, approval flag and, when the page published one, the validated `keyVisual`. Capture URLs and credentials are not copied into the published catalog; the separate configured launch URL is intentionally visible to authorized catalog users. For landscape cards and Screens, the build and the dev server select:
 
 1. A successful approved captured screenshot no older than `maxAgeHours` (default 168 hours).
-2. An owner-approved local PNG/JPEG/WebP from app metadata.
-3. A plain "No screenshot yet" note, plus a **Request screenshot** action for the owner or an admin (`POST api/apps/:id/capture`, which your job runner can poll).
+2. Otherwise constellation artwork on cards and an honest status on Screens, plus Request screenshot for the owner/admin. App edits cannot forge worker approval, timestamps or image paths. Trusted seed records preserve validated capture metadata (`approved`, `capturedAt`, `expiresAt`, app-specific content-hashed JPG path).
 
 A key graph from a fresh capture replaces the owner-entered graph for tiles and the hero, and is labelled as coming from the app.
 
@@ -77,7 +88,7 @@ For per-app permissions, protect image delivery with the same audience restricti
 ## Work-environment acceptance
 
 - Publish a key graph from one real app's preview route, capture it, and confirm the tile and hero constellation match the app's chart. Change the chart's data and confirm the art changes on the next capture.
-- Capture two actual apps from approved preview URLs. Confirm images show the real app UI and load in the catalog.
+- Capture two actual apps from approved preview URLs. Confirm images show the real app UI on landscape cards and Screens; portrait cards retain constellation art.
 - Deploy a UI change, trigger capture, and confirm the image revision and the Screens image change without manual editing.
 - Confirm owner-approved descriptions stay intact; new metadata-generated descriptions are flagged for review.
 - Verify login, HTTP 500, app error marker, missing readiness marker, timeout and missing credentials each produce failure without replacing a fresh good screenshot.
@@ -89,3 +100,4 @@ For per-app permissions, protect image delivery with the same audience restricti
 ## Verification in this package
 
 The worker's lifecycle and policy, including reading and rejecting published key graphs, have passing mock-browser tests. No internal app screenshots have been captured in this environment. A real browser capture run requires your internal network and app configuration. Do not treat unit tests as that integration gate.
+

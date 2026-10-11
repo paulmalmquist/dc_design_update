@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,readdir,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,readdir,mkdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {validateConfig,assertAllowedUrl,usableCapture} from '../capture/policy.mjs';
-import {captureOne} from '../capture/worker.mjs';
+import {captureOne,runCapture} from '../capture/worker.mjs';
 const app={id:'aim',url:'https://approved.example/aim/preview',readySelector:'[data-thumbnail-ready]',safePreview:true,maskSelectors:['[data-sensitive]']};
 const config={allowedOrigins:['https://approved.example'],apps:[app]};
 test('reject unapproved origins, credential URLs, and malformed app IDs',()=>{assert.throws(()=>assertAllowedUrl('https://approved.example.evil/aim',config));assert.throws(()=>assertAllowedUrl('https://user:pass@approved.example/',config));assert.throws(()=>validateConfig({...config,apps:[{...app,id:'../aim'}]}));assert.throws(()=>validateConfig({...config,apps:[{...app,safePreview:false}]}));});
@@ -19,3 +19,15 @@ test('the app page can publish its key graph; only valid numeric graphs are kept
   assert.deepEqual(good.keyVisual,{type:'line',series:[1,4,2,8],label:'Builds per week'});
   for(const kv of [undefined,'not json',JSON.stringify({type:'line',series:['<script>']}),'x'.repeat(20001)]){const r=await captureOne(mockBrowser({kv}),config,app,dir,{});assert.equal(r.keyVisual,undefined);assert.ok(r.path);}
 }finally{await rm(dir,{recursive:true,force:true});}});
+test('worker uses the supplied live catalog and writes its manifest (mock browser, not a real screenshot)', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'dc-worker-test-'));
+  try {
+    await mkdir(path.join(dir, 'capture')); await mkdir(path.join(dir, 'data'));
+    let closed = false; const browser = mockBrowser(); browser.close = async () => { closed = true; };
+    const result = await runCapture({config, catalog: [{id: 'aim'}], rootDir: dir, chromium: {launch: async () => browser}});
+    assert.deepEqual(result, {captured: 1, failed: 0}); assert.equal(closed, true);
+    const manifest = JSON.parse(await readFile(path.join(dir, 'data/capture-manifest.json'), 'utf8'));
+    assert.equal(manifest.apps.aim.lastAttemptStatus, 'succeeded'); assert.ok(usableCapture(manifest.apps.aim));
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+

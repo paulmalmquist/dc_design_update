@@ -7,10 +7,18 @@ export const GENERATOR_VERSION = '2.0.0';
 const clean = (value, max = 180) => typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
 const isoDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(value) && Number.isFinite(Date.parse(value)) ? value.slice(0, 10) : '';
 
+export function validateLaunchUrl(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value !== 'string' || value.length > 2048) throw new Error('Launch URL must be an HTTPS URL.');
+  let url; try { url = new URL(value); } catch { throw new Error('Launch URL must be an HTTPS URL.'); }
+  if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Launch URL must use HTTPS without embedded credentials.');
+  return url.href;
+}
+
 export function validateApp(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('App metadata must be an object.');
   const app = {
-    id: clean(input.id, 64), title: clean(input.title, 60), domain: clean(input.domain, 40),
+    id: clean(input.id, 64), title: clean(input.title, 60), domain: clean(input.domain, 40), launchUrl: validateLaunchUrl(input.launchUrl),
     task: clean(input.task, 120), subject: clean(input.subject, 180), audience: clean(input.audience, 100),
     owner: clean(input.owner, 100), description: clean(input.description, 360), logline: clean(input.logline, 120),
     descriptionApproved: input.descriptionApproved === true,
@@ -60,3 +68,4 @@ export function enrich(input) {
     revision, generatorVersion: GENERATOR_VERSION,
     artworkSource: 'constellation', screenshotSource: app.screenshotApproved && app.screenshotPath ? 'approved-screenshot' : 'none'};
 }
+

@@ -25,7 +25,7 @@ for (const raw of apps) {
   const rec = {...raw}, cap = captures.apps?.[raw.id];
   if (usableCapture(cap, Date.now(), captures.maxAgeHours)) {
     try {
-      await access(path.join(root, 'dist', cap.path)); rec.screenshot = {path: cap.path, capturedAt: cap.capturedAt};
+      await access(path.join(root, 'dist', cap.path)); rec.screenshot = {path: cap.path, capturedAt: cap.capturedAt, approved: true, expiresAt: new Date(Date.parse(cap.capturedAt) + (captures.maxAgeHours || 168) * 3600000).toISOString()};
       if (cap.keyVisual) { rec.keyVisual = validateKeyVisual(cap.keyVisual); rec.keyVisualSource = 'app'; }   // the app's own graph wins
     } catch { console.warn(`${raw.id}: screenshot file missing; skipping it.`); }
   }
@@ -34,10 +34,12 @@ for (const raw of apps) {
   await out(`art/${app.id}-wide.svg`, artSvg(app, {shape: 'wide'}));
   await out(`art/${app.id}-tall.svg`, artSvg(app, {shape: 'tall'}));
   await out(`thumbnails/${app.id}.svg`, thumbnailSvg(rec));
-  if ((raw.status || 'published') === 'published') catalog.push({...app, art: {wide: `art/${app.id}-wide.svg`, tall: `art/${app.id}-tall.svg`}, thumbnailPath: `thumbnails/${app.id}.svg`, ...(rec.screenshot ? {screenshot: rec.screenshot} : {})});
+  if ((raw.status || 'published') === 'published') catalog.push({...app, art: {wide: `art/${app.id}-wide.svg`, tall: `art/${app.id}-tall.svg`}, thumbnailPath: rec.screenshot?.path || `thumbnails/${app.id}.svg`, ...(rec.screenshot ? {screenshot: rec.screenshot} : {})});
 }
 await out('catalog.json', JSON.stringify(catalog, null, 2) + '\n');          // public, published apps only
 await out('seed.json', JSON.stringify({apps: seedApps, users}) + '\n');       // sample data for the in-browser store
+await out('runtime.json', JSON.stringify({mode: process.argv.includes('--demo') ? 'demo' : 'server'}) + '\n');
 await out('brand/favicon.svg', faviconSvg());
 await out('brand/mark.svg', markSvg({id: 'b'}).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
 console.log(`Built ${catalog.length} published apps (${apps.length} records), ${apps.length * 3} art files and brand assets.`);
+

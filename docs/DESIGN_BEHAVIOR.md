@@ -1,6 +1,6 @@
 # Dreamcatcher: streaming-style browsing for apps
 
-The aim is to make browsing apps feel like HBO Max: a big rotating billboard, edge-to-edge rows, a Top 10, a page per title, and My Stuff. The artwork is Dreamcatcher's own. Every app's tile and hero art is a constellation drawn from that app's main graph, so the catalog looks like a night sky and each star pattern means something.
+The aim is to make browsing apps feel like HBO Max: a big rotating billboard, edge-to-edge rows, a Top 10, a page per title, and My Stuff. The artwork is Dreamcatcher's own. The hero and portrait collections use graph-derived constellations. Landscape cards use approved screenshots when available, with labeled constellation fallbacks.
 
 ## What is documented about HBO Max, and what is ours
 
@@ -19,7 +19,7 @@ There's no public spec for the HBO Max web player's layout or timings, and this 
 | Streaming behaviour | Dreamcatcher version | Where |
 |---|---|---|
 | Billboard hero | Up to 8 curated apps rotate every 8 s, with pips, previous/next and pause. It holds while scrolled out of view, while keyboard focus is inside it, and for reduced motion. Art is the app's key graph as a live constellation | `H` in `dist/app.mjs` |
-| Hover a title, preview plays up top | Hover a tile for 600 ms and the hero switches to that app ("Preview" kicker); the hero's stars morph into its graph. Leaving restores the rotation | `wireHoverPreview` |
+| Hover a title, preview plays up top | Hover or keyboard-focus a card for 600 ms while the hero is visible: its stars morph into that app's graph. Leaving the card (including into row whitespace) restores rotation after 1.5 s. Navigation cancels pending work | `wireHoverPreview` |
 | Browse menu, upper left | Drawer with Home, New, Top 10, Originals, the six domains, My Stuff, Create, Your apps, Site admin, Search. Focus is trapped; Escape closes | `#browse` |
 | Overlay header | Transparent over heroes, solid with blur after 40 px of scroll | `onScroll` |
 | Top 10 | Portrait tiles with large outlined numerals behind them. Order is set in Site admin | `.tile--top` |
@@ -50,7 +50,7 @@ Where the graph comes from, in order:
 2. **The owner's entry** in the editor (Your apps → New app), with a live preview of the hero and both tiles.
 3. **A generated pattern** from the domain's motif, seeded by the app ID, so even a brand-new app with no data gets distinctive art right away.
 
-Screenshots still matter, but they're no longer the tile: they appear on the title page under Screens.
+Standard 16:9 cards show fresh, approved captures of the actual app. Portrait Originals/Top 10 cards keep constellation posters. Screens also shows the capture and its current status. No live app or video is loaded on hover.
 
 ## Brand
 
@@ -68,10 +68,15 @@ Screenshots still matter, but they're no longer the tile: they appear on the tit
 
 ## Accessibility
 
-Keyboard focus shows the same reveal as hover. Rails scroll with arrow keys, the hero carousel has a pause control, and the drawer and dialogs trap and restore focus. Reduced motion turns off the morphs, the flight, the ident and the autoplay, but keeps every action. Touch never depends on hover: one tap opens the title page.
+Keyboard focus shows the same reveal as hover. Rails scroll with arrow keys, the hero carousel has a pause control, and the drawer and dialogs trap and restore focus. Reduced motion turns off the morphs, the flight, the ident and the autoplay, but keeps every action. Touch never depends on hover: descriptions and save controls remain visible and one tap opens the title page. Pause and profile controls stay available on phones. My List changes update its grid and home shelf immediately.
+
+## Integration details
+
+`launchUrl` enables Open app as an HTTPS link in a new tab (`noopener noreferrer`); missing URLs show a disabled setup state. History records detail-page views and is labeled Viewed, not launched. Rankings are editorial sample data, not inferred usage analytics. Automatic captures require operator-approved safe-preview routes; see SCREENSHOT_PIPELINE.md.
 
 ## Sources
 
 - HBO Max help, "Getting around the HBO Max app" (reviewed 10 Oct 2026): https://help.hbomax.com/us/Answer/Detail/000002559
 - Warner Bros. Discovery press release, "Max updates homepage user interface with enhanced video elements," 17 June 2025: https://press.wbd.com/us/media-release/hbo-max/max-updates-homepage-user-interface-enhanced-video-elements
 - TV Tech coverage of the same update: https://www.tvtechnology.com/news/max-updates-homepage-user-interface
+

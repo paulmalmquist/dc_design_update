@@ -3,6 +3,7 @@
 // both run this exact code, so permissions and validation behave the same everywhere.
 // Production: implement the same routes against the real Dreamcatcher database (see docs/CRUD_CONTRACT.md).
 import {validateApp} from './catalog.mjs';
+import {approvedScreenshot} from './capture-record.mjs';
 
 export const ROLES = ['viewer', 'creator', 'admin'];
 export const STATUSES = ['draft', 'published', 'archived'];
@@ -26,6 +27,7 @@ export function seedDb({apps = [], users = [], now = Date.now()} = {}) {
   for (const raw of apps) {
     const app = validateApp(raw);
     db.apps[app.id] = {...app, origin: 'seed', status: STATUSES.includes(raw.status) ? raw.status : 'published', ownerId: db.users[raw.ownerId] ? raw.ownerId : Object.keys(db.users)[0] || '',
+      screenshot: approvedScreenshot(raw.screenshot, app.id, now),
       createdAt: raw.publishedAt ? `${raw.publishedAt}T12:00:00.000Z` : iso(now), updatedAt: raw.updatedAt ? `${raw.updatedAt}T12:00:00.000Z` : (raw.publishedAt ? `${raw.publishedAt}T12:00:00.000Z` : iso(now))};
   }
   db.curation.hero = Object.values(db.apps).filter(a => a.featured && a.status === 'published').map(a => a.id).slice(0, 8);
@@ -50,12 +52,13 @@ function writeApp(db, user, input, existing, now) {
   if (!isAdmin(user)) for (const f of ADMIN_FIELDS) delete patch[f];
   delete patch.ownerId; delete patch.createdAt; delete patch.updatedAt; delete patch.capture; delete patch.origin;
   delete patch.keyVisualSource;                               // "drawn from the app itself" is only set by the capture worker
+  delete patch.screenshot; delete patch.screenshotApproved; delete patch.screenshotPath;
   const merged = {...base, ...patch};
   if ('keyVisual' in patch) merged.keyVisualSource = 'metadata';
   const app = validateApp(merged);                         // throws a readable error on bad input
   const status = STATUSES.includes(merged.status) ? merged.status : (existing?.status || 'draft');
   if (status === 'published' && !app.publishedAt) app.publishedAt = day(now);
-  return {...app, origin: existing?.origin || 'app', status, ownerId: existing?.ownerId || user.id, createdAt: existing?.createdAt || iso(now), updatedAt: iso(now)};
+  return {...app, screenshot: approvedScreenshot(existing?.screenshot, app.id, now), origin: existing?.origin || 'app', status, ownerId: existing?.ownerId || user.id, createdAt: existing?.createdAt || iso(now), updatedAt: iso(now)};
 }
 
 /** Handle one request. `path` has no leading slash and may carry a query string, e.g. "apps?scope=all". */
@@ -64,7 +67,7 @@ export function handle(db, user, method, path, body = {}, now = Date.now()) {
   const M = method.toUpperCase(), [res, id, sub] = parts;
   if (!user) return fail(401, 'Sign in to use Dreamcatcher.');
   try {
-    if (res === 'session' && M === 'GET') return ok({user: clone(user), roles: ROLES});
+    if (res === 'session' && !id && M === 'GET') return ok({user: clone(user), roles: ROLES});
     if (res === 'apps') {
       if (!id && M === 'GET') {
         const scope = q.get('scope');
@@ -106,6 +109,7 @@ export function handle(db, user, method, path, body = {}, now = Date.now()) {
       }
       if (sub === 'capture' && M === 'POST') {
         if (!canEdit(user, app)) return fail(403, 'Only the app owner or a site admin can request a new screenshot.');
+        if (['queued', 'running'].includes(db.captures[id]?.status)) return ok(db.captures[id]);
         db.captures[id] = {status: 'queued', requestedAt: iso(now), requestedBy: user.name};
         audit(db, user, 'capture', id, 'Requested a new screenshot', now);
         return ok(db.captures[id]);
@@ -151,12 +155,12 @@ export function handle(db, user, method, path, body = {}, now = Date.now()) {
       }
       if (id === 'list') {
         if (!sub && M === 'GET') return ok(lists.filter(a => db.apps[a] && visible(user, db.apps[a])));
-        if (sub && M === 'PUT') { if (!db.apps[sub] || !visible(user, db.apps[sub])) return fail(404, 'That app is not in the catalog.'); if (!lists.includes(sub)) lists.unshift(sub); return ok(lists); }
-        if (sub && M === 'DELETE') { db.lists[user.id] = lists.filter(x => x !== sub); return ok(db.lists[user.id]); }
+        if (sub && M === 'PUT') { if (!db.apps[sub] || !visible(user, db.apps[sub])) return fail(404, 'That app is not in the catalog.'); if (!lists.includes(sub)) lists.unshift(sub); return ok(lists.filter(a => db.apps[a] && visible(user, db.apps[a]))); }
+        if (sub && M === 'DELETE') { db.lists[user.id] = lists.filter(x => x !== sub); return ok(db.lists[user.id].filter(a => db.apps[a] && visible(user, db.apps[a]))); }
       }
       if (id === 'history') {
         if (M === 'GET') return ok(hist.filter(h => db.apps[h.id] && visible(user, db.apps[h.id])));
-        if (M === 'POST') { const appId = String(body.id || ''); if (!db.apps[appId]) return fail(404, 'That app is not in the catalog.'); db.history[user.id] = [{id: appId, at: iso(now)}, ...hist.filter(h => h.id !== appId)].slice(0, 30); return ok(db.history[user.id]); }
+        if (M === 'POST') { const appId = String(body.id || ''); if (!db.apps[appId] || !visible(user, db.apps[appId])) return fail(404, 'That app is not in the catalog.'); db.history[user.id] = [{id: appId, at: iso(now)}, ...hist.filter(h => h.id !== appId)].slice(0, 30); return ok(db.history[user.id].filter(h => db.apps[h.id] && visible(user, db.apps[h.id]))); }
         if (M === 'DELETE') { db.history[user.id] = []; return ok([]); }
       }
     }
@@ -166,3 +170,4 @@ export function handle(db, user, method, path, body = {}, now = Date.now()) {
     return fail(400, error.message || 'That request could not be saved.');
   }
 }
+
