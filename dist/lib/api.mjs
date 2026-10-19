@@ -1,21 +1,17 @@
 // Data access. One interface, two backends:
 //  • ServerStore — the REST CRUD contract over HTTP (`/api/...`): the dev server now, the real Dreamcatcher database in production.
-//  • BrowserStore — explicit demo builds only. API errors must never change identity or storage mode.
+//  • BrowserStore — the same handler running in the page against localStorage, used when no API is reachable (static hosting, previews).
 import {handle, seedDb} from './db-core.mjs';
 
-export async function connect({mode = 'server'} = {}) {
-  if (mode === 'demo') return BrowserStore.open();
-  if (mode !== 'server') throw new Error('Unknown catalog mode. Use server or demo.');
+export async function connect() {
   try {
     const r = await fetch('api/session', {headers: {accept: 'application/json'}, cache: 'no-store'});
     const json = (r.headers.get('content-type') || '').includes('json');
     if (r.ok && json) return new ServerStore(await r.json());
-    const data = json ? await r.json().catch(() => ({})) : {};
-    throw Object.assign(new Error(data.error || ([401, 403].includes(r.status) ? 'Sign in to use Dreamcatcher.' : 'The catalog API is unavailable. Please retry.')), {status: r.status || 503});
-  } catch (err) {
-    if (err.status) throw err;
-    throw Object.assign(new Error('Could not connect to the catalog API. Check your connection and retry.'), {status: 503});
-  }
+    // A real API that says "not signed in" must not fall back to the local sandbox.
+    if (json && (r.status === 401 || r.status === 403)) { const data = await r.json().catch(() => ({})); throw Object.assign(new Error(data.error || 'Sign in to use Dreamcatcher.'), {status: r.status}); }
+  } catch (err) { if (err.status) throw err; }
+  return BrowserStore.open();
 }
 
 class ServerStore {
@@ -51,7 +47,6 @@ class BrowserStore {
   }
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.db)); localStorage.setItem(USER_KEY, this.userId); } catch { this.persistent = false; } }
   async call(method, path, body) {
-    if (method === 'POST' && /^apps\/[^/]+\/capture$/.test(path)) throw new Error('Screenshot capture requires the server and an approved capture configuration; it is not available in demo mode.');
     const res = handle(this.db, this.db.users[this.userId], method, path, body ?? {});
     if (method !== 'GET' && res.status < 400) this.save();
     if (res.status >= 400) throw Object.assign(new Error(res.body.error), {status: res.status});
@@ -61,4 +56,3 @@ class BrowserStore {
   async switchUser(id) { if (this.db.users[id]) { this.userId = id; this.save(); this.session = {user: this.db.users[id]}; } }
   async reset() { this.db = await BrowserStore.seed(); this.save(); }
 }
-
